@@ -1,0 +1,8 @@
+services:
+  monerod:
+    build: ./monerod
+    volumes:
+      - blockchain:/srv
+
+volumes:
+  blockchain:
