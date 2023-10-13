@@ -26,7 +26,7 @@ RUN set -eux \
   && mv /$NAME-* /$NAME
 
 FROM base
-COPY --from=builder /$NAME/$NAME* /usr/bin
+COPY --from=builder /$NAME/$NAME* /usr/bin/
 RUN set -eux \
   \
   && addgroup --system --gid 101 monerod \
