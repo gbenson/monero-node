@@ -40,4 +40,5 @@ WORKDIR /srv/p2pool
 
 ENTRYPOINT ["p2pool"]
 CMD ["--host",  "monerod", \
+     "--mini", \
      "--wallet", "4APvq9TNgrBSYjZ4AvVJpvgh493nzMjmzUNK6EL4aAJiGr1dSGQXx1o5Kk14F4Gj1zDwdfyuBbSwDFKmmFhovTrX976BRNe"]

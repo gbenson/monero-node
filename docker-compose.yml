@@ -3,6 +3,7 @@ version: "3.2"
 services:
   xmrig:
     build: ./xmrig
+    init: true
     links:
       - p2pool
     volumes:
@@ -10,13 +11,18 @@ services:
 
   p2pool:
     build: ./p2pool
+    init: true
     links:
       - monerod
+    ports:
+      - 3333:3333  # stratum port
+      - 37888:37888  # p2pool-mini p2p port
     volumes:
       - p2pool:/srv
 
   monerod:
     build: ./monerod
+    init: true
     volumes:
       - blockchain:/srv
 
