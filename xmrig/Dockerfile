@@ -7,8 +7,6 @@ ENV ARCH=linux-static-x64
 ENV TARBALL=$PACKAGE-$ARCH.tar.gz
 ENV DOWNLOAD=https://github.com/xmrig/$NAME/releases/download
 ENV HASH=ff6e67d725ee64b4607dc6490a706dc9234c708cff814477de52d3beb781c6a1
-ENV UID=803
-ENV GID=$UID
 
 RUN set -eux \
   \
@@ -30,18 +28,11 @@ RUN set -eux \
   && sha256sum -c SHA256SUMS
 
 FROM base
-RUN set -eux \
-  \
-  && addgroup --system --gid $GID xmrig \
-  && adduser --system --uid $UID --gid $GID --disabled-password xmrig \
-  && mkdir -m0750 /etc/xmrig \
-  && chgrp xmrig /etc/xmrig
-
+RUN mkdir -m0700 /etc/xmrig
 COPY --from=builder /$NAME-$VERSION/xmrig /usr/bin
-COPY --from=builder --chown=0:$GID --chmod=640 /$NAME-$VERSION/config.json /etc/xmrig
+COPY --from=builder --chmod=600 /$NAME-$VERSION/config.json /etc/xmrig
 
 VOLUME /srv
-USER xmrig
 WORKDIR /srv/xmrig
 
 ENTRYPOINT ["xmrig"]
