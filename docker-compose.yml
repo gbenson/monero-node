@@ -1,6 +1,13 @@
 version: "3.2"
 
 services:
+  xmrig:
+    build: ./xmrig
+    links:
+      - p2pool
+    volumes:
+      - xmrig:/srv
+
   p2pool:
     build: ./p2pool
     links:
@@ -16,3 +23,4 @@ services:
 volumes:
   blockchain:
   p2pool:
+  xmrig:
