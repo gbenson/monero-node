@@ -111,7 +111,7 @@
         {
             "algo": null,
             "coin": null,
-            "url": "p2pool:3333",
+            "url": "127.0.0.1:3333",
             "user": null,
             "pass": null,
             "rig-id": null,
