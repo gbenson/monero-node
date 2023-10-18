@@ -1,45 +1,37 @@
-FROM debian:12 as base
+# https://github.com/sethforprivacy/simple-monerod-docker
+# https://hub.docker.com/r/sethsimmons/simple-monerod/tags
+FROM sethsimmons/simple-monerod:v0.18.3.1
 
-ENV NAME=monero
-ENV VERSION=v0.18.3.1
-ENV TARBALL=$NAME-linux-x64-$VERSION.tar.bz2
-ENV DOWNLOAD=https://downloads.getmonero.org/cli
-ENV HASH=23af572fdfe3459b9ab97e2e9aa7e3c11021c955d6064b801a27d7e8c21ae09d
+ARG m_USER=monerod
+ARG m_UID=801
+ARG m_GID=$m_UID
+ARG m_HOME=/nonexistent
+ARG m_SHELL=/usr/sbin/nologin
 
+USER root
+WORKDIR /
 RUN set -eux \
   \
-  && apt-get -y update \
-  && apt-get -y upgrade \
-  && apt-get -y install curl bzip2 \
-  && apt-get -y clean \
-  && rm -rf /var/lib/apt
+  && sed -i "s/fixuid -q//" /entrypoint.sh \
+  && rm -f /usr/local/bin/fixuid \
+  && chown 0:0 /usr/local/bin/monerod \
+  && mv /usr/local/bin/monerod /usr/bin \
+  && deluser --remove-home monero \
+  && addgroup -S -g $m_GID $m_USER \
+  && adduser -h $m_HOME -s $m_SHELL -G $m_USER -u $m_UID -D -g "" $m_USER \
+  && mkdir -m 0700 /srv/monerod \
+  && chown $m_UID:$m_GID /srv/monerod
 
-FROM base as builder
-RUN set -eux \
-  \
-  && curl -Lo $TARBALL $DOWNLOAD/$TARBALL \
-  && sha256sum $TARBALL \
-  && echo "$HASH  $TARBALL" > SHA256SUMS \
-  && sha256sum -c SHA256SUMS \
-  && tar xf $TARBALL \
-  && rm $TARBALL \
-  && mv /$NAME-* /$NAME
+VOLUME /srv/monerod
 
-FROM base
-COPY --from=builder /$NAME/$NAME* /usr/bin/
-RUN set -eux \
-  \
-  && addgroup --system --gid 101 monerod \
-  && adduser --system --uid 101 --gid 101 --disabled-password monerod
+USER $m_USER:$m_USER
 
-VOLUME /srv
-USER monerod
-
-ENTRYPOINT ["monerod"]
-CMD ["--non-interactive", \
-     "--data-dir", "/srv/monerod", \
+CMD ["--data-dir", "/srv/monerod", \
+     "--max-log-file-size", "10485760", \
+     "--max-log-files", "4", \
      "--rpc-bind-ip", "0.0.0.0", "--confirm-external-bind", \
      "--zmq-pub", "tcp://0.0.0.0:18083", \
+     "--no-igd", \
      "--out-peers", "16", "--in-peers", "8", \
      "--add-priority-node=p2pmd.xmrvsbeast.com:18080", \
      "--add-priority-node=nodes.hashvault.pro:18080", \
