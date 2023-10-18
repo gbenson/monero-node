@@ -21,7 +21,7 @@ services:
       - p2pool:/srv
 
   monerod:
-    build: ./monerod
+    image: gbenson/monero-node
     init: true
     volumes:
       - monerod:/srv/monerod
