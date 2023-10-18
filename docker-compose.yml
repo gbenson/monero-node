@@ -24,9 +24,10 @@ services:
     build: ./monerod
     init: true
     volumes:
-      - blockchain:/srv
+      - monerod:/srv/monerod
 
 volumes:
-  blockchain:
+  monerod:
+    external: true
   p2pool:
   xmrig:
