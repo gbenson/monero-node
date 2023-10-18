@@ -23,6 +23,8 @@ services:
   monerod:
     image: gbenson/monero-node
     init: true
+    ports:
+      - 18080:18080
     volumes:
       - monerod:/srv/monerod
 
