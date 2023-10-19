@@ -18,7 +18,7 @@ services:
       - 3333:3333  # stratum port
       - 37888:37888  # p2pool-mini p2p port
     volumes:
-      - p2pool:/srv
+      - p2pool:/srv/p2pool
 
   monerod:
     image: gbenson/monero-node
@@ -32,4 +32,5 @@ volumes:
   monerod:
     external: true
   p2pool:
+    external: true
   xmrig:
