@@ -19,6 +19,7 @@ services:
       - 37888:37888  # p2pool-mini p2p port
     volumes:
       - p2pool:/srv/p2pool
+      - /dev/null:/srv/p2pool/p2pool.log
 
   monerod:
     image: gbenson/monero-node
