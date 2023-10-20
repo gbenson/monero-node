@@ -12,7 +12,7 @@ RUN set -eux \
   \
   && apt-get -y update \
   && apt-get -y upgrade \
-  && apt-get -y install curl netcat-openbsd \
+  && apt-get -y install curl \
   && apt-get -y clean \
   && rm -rf /var/lib/apt
 
@@ -43,10 +43,6 @@ VOLUME /srv/p2pool
 
 USER $m_USER:$m_USER
 WORKDIR /srv/p2pool
-
-ARG hcr='{"id":1,"method":"login","params":{"login":"healthcheck"}}'
-ARG hcx='"status":"OK"'
-HEALTHCHECK --interval=30s --timeout=5s CMD echo $hcr | nc -W1 127.0.0.1 3333 | grep -q $hcx
 
 ENTRYPOINT ["p2pool"]
 CMD ["--host",  "monerod", \
