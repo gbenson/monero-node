@@ -1,14 +1,6 @@
 version: "3.2"
 
 services:
-  xmrig:
-    build: ./xmrig
-    init: true
-    links:
-      - p2pool
-    volumes:
-      - xmrig:/srv
-
   p2pool:
     build: ./p2pool
     init: true
@@ -34,4 +26,3 @@ volumes:
     external: true
   p2pool:
     external: true
-  xmrig:
