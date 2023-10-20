@@ -2,7 +2,7 @@ version: "3.2"
 
 services:
   p2pool:
-    build: ./p2pool
+    image: gbenson/p2pool
     init: true
     links:
       - monerod
