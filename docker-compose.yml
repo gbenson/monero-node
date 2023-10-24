@@ -7,8 +7,8 @@ services:
     links:
       - monerod
     ports:
-      - 3333:3333  # stratum port
-      - 37888:37888  # p2pool-mini p2p port
+      - 127.0.0.1:3333:3333/tcp  # stratum port
+      - 0.0.0.0:37888:37888/tcp  # p2pool-mini p2p port
     volumes:
       - p2pool:/srv/p2pool
       - /dev/null:/srv/p2pool/p2pool.log
@@ -17,7 +17,8 @@ services:
     image: gbenson/monero-node
     init: true
     ports:
-      - 18080:18080
+      - 0.0.0.0:18080:18080/tcp  # p2p port
+      - 127.0.0.1:18081:18081/tcp  # unrestricted RPC port
     volumes:
       - monerod:/srv/monerod
 
