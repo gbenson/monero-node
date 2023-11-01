@@ -7,7 +7,7 @@ services:
     links:
       - monerod
     ports:
-      - 127.0.0.1:3333:3333/tcp  # stratum port
+      - 0.0.0.0:3333:3333/tcp  # stratum port
       - 0.0.0.0:37888:37888/tcp  # p2pool-mini p2p port
     volumes:
       - p2pool:/srv/p2pool
