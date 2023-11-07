@@ -3,6 +3,8 @@ version: "3.2"
 services:
   p2pool:
     image: gbenson/p2pool
+    container_name: p2pool
+    restart: unless-stopped
     init: true
     links:
       - monerod
@@ -15,12 +17,27 @@ services:
 
   monerod:
     image: gbenson/monero-node
+    container_name: monerod
+    restart: unless-stopped
     init: true
     ports:
       - 0.0.0.0:18080:18080/tcp  # p2p port
-      - 127.0.0.1:18081:18081/tcp  # unrestricted RPC port
     volumes:
       - monerod:/srv/monerod
+      - /dev/null:/srv/monerod/bitmonero.log
+    command:
+      - --data-dir=/srv/monerod
+      - --log-level=0
+      - --rpc-bind-ip=0.0.0.0
+      - --confirm-external-bind
+      - --zmq-pub=tcp://0.0.0.0:18083
+      - --no-igd
+      - --out-peers=16
+      - --in-peers=32
+      - --disable-dns-checkpoints
+      - --restricted-rpc
+      - --prune-blockchain
+      - --sync-pruned-blocks
 
 volumes:
   monerod:

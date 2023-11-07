@@ -27,8 +27,7 @@ VOLUME /srv/monerod
 USER $m_USER:$m_USER
 
 CMD ["--data-dir", "/srv/monerod", \
-     "--max-log-file-size", "10485760", \
-     "--max-log-files", "4", \
+     "--log-level", "0",\
      "--rpc-bind-ip", "0.0.0.0", "--confirm-external-bind", \
      "--zmq-pub", "tcp://0.0.0.0:18083", \
      "--no-igd", \
