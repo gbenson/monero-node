@@ -25,3 +25,9 @@ Source OpenStack config and credentials:
 ```sh
 . ~/.config/gbenson/secrets/openstack-openrc.sh
 ```
+
+## Usage
+```sh
+terraform fmt && terraform plan -out=tfplan
+terraform apply tfplan
+```
