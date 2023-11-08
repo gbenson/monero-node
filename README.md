@@ -31,3 +31,10 @@ Source OpenStack config and credentials:
 terraform fmt && terraform plan -out=tfplan
 terraform apply tfplan
 ```
+
+## Admin
+Tweak monerod local settings:
+```sh
+sudo nano /var/lib/docker/volumes/monerod/_data/bitmonero.conf
+sudo systemctl restart monerod
+```

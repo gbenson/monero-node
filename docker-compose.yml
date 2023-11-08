@@ -22,6 +22,7 @@ services:
     init: true
     ports:
       - 0.0.0.0:18080:18080/tcp  # p2p port
+      - 127.0.0.1:18081:18081/tcp  # unrestricted RPC port
     volumes:
       - monerod:/srv/monerod
       - /dev/null:/srv/monerod/bitmonero.log
@@ -32,12 +33,8 @@ services:
       - --confirm-external-bind
       - --zmq-pub=tcp://0.0.0.0:18083
       - --no-igd
-      - --out-peers=16
-      - --in-peers=32
       - --disable-dns-checkpoints
-      - --restricted-rpc
-      - --prune-blockchain
-      - --sync-pruned-blocks
+      - --config-file=/srv/monerod/bitmonero.conf
 
 volumes:
   monerod:
