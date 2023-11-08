@@ -40,3 +40,9 @@ resource "openstack_compute_volume_attach_v2" "p2pool_node" {
   instance_id = openstack_compute_instance_v2.p2pool_node.id
   volume_id   = openstack_blockstorage_volume_v3.monerod.id
 }
+
+resource "dreamhost_dns_record" "p2pool_node" {
+  record = "p2pool.gbenson.net"
+  type   = "A"
+  value  = openstack_compute_instance_v2.p2pool_node.access_ip_v4
+}
