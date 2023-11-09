@@ -29,7 +29,6 @@ services:
     init: true
     ports:
       - 0.0.0.0:18080:18080/tcp  # p2p port
-      - 127.0.0.1:18081:18081/tcp  # unrestricted RPC port
     volumes:
       - monerod:/srv/monerod
       - /dev/null:/srv/monerod/bitmonero.log
@@ -42,6 +41,16 @@ services:
       - --no-igd
       - --disable-dns-checkpoints
       - --config-file=/srv/monerod/bitmonero.conf
+
+  rpc-proxy:
+    image: httpd:2.4-bookworm
+    container_name: rpc-proxy
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:18081:18081/tcp  # unrestricted RPC
+    volumes:
+      - ./rpc-proxy/httpd.conf:/usr/local/apache2/conf/httpd.conf
+      - ./rpc-proxy/.htpasswd.digest:/usr/local/apache2/conf/htpasswd.digest
 
 volumes:
   monerod:
