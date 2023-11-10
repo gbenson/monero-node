@@ -84,7 +84,6 @@ EOF
 
 apt-get update
 apt-get upgrade -y
-apt-get dist-upgrade -y
 apt-get install -y docker-ce docker-compose-plugin
 
 for sn in monerod p2pool; do
@@ -114,8 +113,14 @@ RestartSec=30s
 WantedBy=multi-user.target
 EOF
 
+SKIP_SETUP=1 bash /opt/monero-node/setup-miner.sh
+sed -i \
+  -e 's/network\.target/p2pool.service\nRequires=p2pool.service/' \
+  -e 's/p2pool\.gbenson\.net/127.0.0.1/g' \
+  /lib/systemd/system/xmrig.service
+
 systemctl daemon-reload
-systemctl enable p2pool
+systemctl enable p2pool xmrig
 
 # Adding users isn't necessary except to avoid numeric UIDs in top
 addgroup --system --gid 801 monerod

@@ -13,7 +13,8 @@ hash=ff6e67d725ee64b4607dc6490a706dc9234c708cff814477de52d3beb781c6a1
 
 if [ -d /opt/xmrig ]; then
   SKIP_SETUP=yes
-else
+fi
+if [ -z "$SKIP_SETUP" ]; then
   for snap in lxd core20 snapd; do
     snap remove $snap
   done
@@ -23,12 +24,12 @@ else
 
   apt-get autoremove -y --purge modemmanager
 
-  #apt-get update
-  #apt-get upgrade -y
-  #apt-get dist-upgrade -y
+  apt-get update
+  apt-get upgrade -y
 fi
 
 mkdir -p /opt/xmrig/bin && cd /opt/xmrig
+[ -e $tarball ] && exit 1
 curl -Lo $tarball $download/v$version/$tarball
 echo $hash $tarball > $tarball.SHA256SUM
 sha256sum -c $tarball.SHA256SUM
