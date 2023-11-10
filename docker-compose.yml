@@ -1,6 +1,26 @@
 version: "3.2"
 
 services:
+  monerod:
+    image: gbenson/monero-node
+    container_name: monerod
+    restart: unless-stopped
+    init: true
+    ports:
+      - 0.0.0.0:18080:18080/tcp  # p2p port
+    volumes:
+      - monerod:/srv/monerod
+      - /dev/null:/srv/monerod/bitmonero.log
+    command:
+      - --data-dir=/srv/monerod
+      - --log-level=0
+      - --rpc-bind-ip=0.0.0.0
+      - --confirm-external-bind
+      - --zmq-pub=tcp://0.0.0.0:18083
+      - --no-igd
+      - --disable-dns-checkpoints
+      - --config-file=/srv/monerod/bitmonero.conf
+
   p2pool:
     image: gbenson/p2pool
     container_name: p2pool
@@ -23,27 +43,8 @@ services:
       - --mini
       - --no-upnp
       - --wallet
-      - 4APvq9TNgrBSYjZ4AvVJpvgh493nzMjmzUNK6EL4aAJiGr1dSGQXx1o5Kk14F4Gj1zDwdfyuBbSwDFKmmFhovTrX976BRNe
-
-  monerod:
-    image: gbenson/monero-node
-    container_name: monerod
-    restart: unless-stopped
-    init: true
-    ports:
-      - 0.0.0.0:18080:18080/tcp  # p2p port
-    volumes:
-      - monerod:/srv/monerod
-      - /dev/null:/srv/monerod/bitmonero.log
-    command:
-      - --data-dir=/srv/monerod
-      - --log-level=0
-      - --rpc-bind-ip=0.0.0.0
-      - --confirm-external-bind
-      - --zmq-pub=tcp://0.0.0.0:18083
-      - --no-igd
-      - --disable-dns-checkpoints
-      - --config-file=/srv/monerod/bitmonero.conf
+      - "4APvq9TNgrBSYjZ4AvVJpvgh493nzMjmzUNK6EL4aAJiGr1d\
+         SGQXx1o5Kk14F4Gj1zDwdfyuBbSwDFKmmFhovTrX976BRNe"
 
   rpc-proxy:
     image: httpd:2.4-bookworm
