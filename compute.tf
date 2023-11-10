@@ -50,7 +50,7 @@ resource "openstack_compute_instance_v2" "p2pool_node" {
   name            = "p2pool_node"
   key_pair        = openstack_compute_keypair_v2.keypair.id
   security_groups = ["default", "monerod", "p2pool_mini"]
-  flavor_name     = "gp1.lightspeed"
+  flavor_name     = "gp1.warpspeed"
   image_name      = "Ubuntu-22.04"
   user_data       = file("setup-p2pool-node.sh")
 }
