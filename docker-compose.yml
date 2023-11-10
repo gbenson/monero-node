@@ -6,6 +6,9 @@ services:
     container_name: p2pool
     restart: unless-stopped
     init: true
+    depends_on:
+      monerod:
+        condition: service_healthy
     links:
       - monerod
     ports:
@@ -46,6 +49,11 @@ services:
     image: httpd:2.4-bookworm
     container_name: rpc-proxy
     restart: unless-stopped
+    depends_on:
+      monerod:
+        condition: service_started
+    links:
+      - monerod
     ports:
       - 127.0.0.1:18081:18081/tcp  # unrestricted RPC
     volumes:
