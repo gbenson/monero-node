@@ -87,37 +87,42 @@ apt-get upgrade -y
 apt-get dist-upgrade -y
 apt-get install -y docker-ce docker-compose-plugin
 
-docker volume create monerod
-docker volume create p2pool
-
-uuid=8d196b7e-fd2f-487b-b06e-5e4b88b9c68f
-root=$(docker volume inspect --format "{{.Mountpoint}}" monerod)
-echo -e "UUID=$uuid\t$root\text4\tdefaults\t0 2" >> /etc/fstab
+for sn in monerod p2pool; do
+  docker volume create $sn
+  mp=$(docker volume inspect --format "{{.Mountpoint}}" $sn)
+  echo -e "LABEL=srv-$sn\t$mp\text4\tdefaults\t0 2" >> /etc/fstab
+done
 
 git -C /opt clone https://github.com/gbenson/monero-node
 
-cat <<EOF >/lib/systemd/system/monerod.service
+cat <<EOF >/lib/systemd/system/p2pool.service
 [Unit]
-Description=Monero node
+Description=P2Pool node
 Documentation=https://github.com/gbenson/monero-node
 Requires=docker.service
 After=docker.service
 
 [Service]
 Type=simple
-ExecStart=docker compose -f /opt/monero-node/docker-compose.yml up monerod
-ExecStop=docker compose -f /opt/monero-node/docker-compose.yml stop monerod
+ExecStart=docker compose -f /opt/monero-node/docker-compose.yml up
+ExecStop=docker compose -f /opt/monero-node/docker-compose.yml stop
 Restart=always
+RestartSec=30s
 
 [Install]
 WantedBy=multi-user.target
 EOF
-systemctl daemon-reload
-systemctl enable monerod
 
-# Adding users is unnecessary except to see usernames in top
+systemctl daemon-reload
+systemctl enable p2pool
+
+# Adding users isn't necessary except to avoid numeric UIDs in top
 addgroup --system --gid 801 monerod
 adduser --system --home=/nonexistent --no-create-home \
   --uid 801 --gid 801 --disabled-password monerod
+
+addgroup --system --gid 802 p2pool
+adduser --system --home=/nonexistent --no-create-home \
+  --uid 802 --gid 802 --disabled-password p2pool
 
 reboot
