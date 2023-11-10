@@ -12,13 +12,17 @@ services:
       - monerod:/srv/monerod
       - /dev/null:/srv/monerod/bitmonero.log
     command:
+      - --non-interactive
       - --data-dir=/srv/monerod
       - --log-level=0
       - --rpc-bind-ip=0.0.0.0
       - --confirm-external-bind
       - --zmq-pub=tcp://0.0.0.0:18083
       - --no-igd
+      - --add-priority-node=p2pmd.xmrvsbeast.com:18080
+      - --add-priority-node=nodes.hashvault.pro:18080
       - --disable-dns-checkpoints
+      - --enable-dns-blocklist
       - --config-file=/srv/monerod/bitmonero.conf
 
   p2pool:
