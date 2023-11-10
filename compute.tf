@@ -44,6 +44,16 @@ resource "openstack_networking_secgroup_rule_v2" "inbound_ipv6_p2pmini_p2p" {
   security_group_id = openstack_networking_secgroup_v2.p2pool_mini.id
 }
 
+resource "openstack_networking_secgroup_rule_v2" "inbound_ipv4_stratum" {
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = "tcp"
+  port_range_min    = 3333
+  port_range_max    = 3333
+  remote_group_id   = openstack_networking_secgroup_v2.xmrig.id
+  security_group_id = openstack_networking_secgroup_v2.p2pool_mini.id
+}
+
 # monerod needs <1GiB to run once synced, but >2GiB to sync
 # from scratch.  P2Pool needs 2.6 GiB RAM to run properly.
 resource "openstack_compute_instance_v2" "p2pool_node" {
