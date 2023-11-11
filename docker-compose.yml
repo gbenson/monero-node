@@ -5,9 +5,9 @@ services:
     image: gbenson/monero-node
     container_name: monerod
     restart: unless-stopped
-    init: true
     ports:
       - 0.0.0.0:18080:18080/tcp  # p2p port
+      - 0.0.0.0:18081:18081/tcp  # unrestricted RPC
     volumes:
       - monerod:/srv/monerod
       - /dev/null:/srv/monerod/bitmonero.log
@@ -29,10 +29,8 @@ services:
     image: gbenson/p2pool
     container_name: p2pool
     restart: unless-stopped
-    init: true
     depends_on:
-      monerod:
-        condition: service_healthy
+      - monerod
     links:
       - monerod
     ports:
