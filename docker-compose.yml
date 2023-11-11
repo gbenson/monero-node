@@ -50,21 +50,6 @@ services:
       - "4APvq9TNgrBSYjZ4AvVJpvgh493nzMjmzUNK6EL4aAJiGr1d\
          SGQXx1o5Kk14F4Gj1zDwdfyuBbSwDFKmmFhovTrX976BRNe"
 
-  rpc-proxy:
-    image: httpd:2.4-bookworm
-    container_name: rpc-proxy
-    restart: unless-stopped
-    depends_on:
-      monerod:
-        condition: service_started
-    links:
-      - monerod
-    ports:
-      - 127.0.0.1:18081:18081/tcp  # unrestricted RPC
-    volumes:
-      - ./rpc-proxy/httpd.conf:/usr/local/apache2/conf/httpd.conf
-      - ./rpc-proxy/.htpasswd.digest:/usr/local/apache2/conf/htpasswd.digest
-
 volumes:
   monerod:
     external: true

@@ -103,7 +103,6 @@ After=docker.service
 
 [Service]
 Type=simple
-ExecStartPre=-/bin/sh /opt/monero-node/rpc-proxy/update-passwords.sh
 ExecStart=docker compose -f /opt/monero-node/docker-compose.yml up
 ExecStop=docker compose -f /opt/monero-node/docker-compose.yml stop
 Restart=always
