@@ -21,8 +21,8 @@ RUN set -eux; \
     HASH=23af572fdfe3459b9ab97e2e9aa7e3c11021c955d6064b801a27d7e8c21ae09d \
     ;; \
   aarch64) \
-    ARCH=linux-armv7 \
-    HASH=2ea2c8898cbab88f49423f4f6c15f2a94046cb4bbe827493dd061edc0fd5f1ca \
+    ARCH=linux-armv8 \
+    HASH=445032e88dc07e51ac5fff7034752be530d1c4117d8d605100017bcd87c7b21f \
     ;; \
   *) exit 1 ;; \
   esac; \
