@@ -1,11 +1,4 @@
 FROM debian:12-slim as base
-
-ENV NAME=monero
-ENV VERSION=v0.18.3.1
-ENV TARBALL=$NAME-linux-x64-$VERSION.tar.bz2
-ENV DOWNLOAD=https://downloads.getmonero.org/cli
-ENV HASH=23af572fdfe3459b9ab97e2e9aa7e3c11021c955d6064b801a27d7e8c21ae09d
-
 RUN set -eux \
   \
   && apt-get -y update \
@@ -15,18 +8,33 @@ RUN set -eux \
   && rm -rf /var/lib/apt
 
 FROM base as builder
-RUN set -eux \
+
+ARG NAME=monero
+ARG VERSION=v0.18.3.1
+ARG DOWNLOAD=https://downloads.getmonero.org/cli
+
+RUN set -eux; \
   \
+  case $(uname -m) in \
+  x86_64) \
+    ARCH=linux-x64 \
+    HASH=23af572fdfe3459b9ab97e2e9aa7e3c11021c955d6064b801a27d7e8c21ae09d \
+    ;; \
+  aarch64) \
+    ARCH=linux-armv7 \
+    HASH=2ea2c8898cbab88f49423f4f6c15f2a94046cb4bbe827493dd061edc0fd5f1ca \
+    ;; \
+  *) exit 1 ;; \
+  esac; \
+  TARBALL=$NAME-$ARCH-$VERSION.tar.bz2; \
+  echo "$HASH  $TARBALL" > SHA256SUMS \
   && curl -Lo $TARBALL $DOWNLOAD/$TARBALL \
-  && sha256sum $TARBALL \
-  && echo "$HASH  $TARBALL" > SHA256SUMS \
   && sha256sum -c SHA256SUMS \
   && tar xf $TARBALL \
-  && rm $TARBALL \
-  && mv /$NAME-* /$NAME
+  && mv /$NAME-*-$VERSION /build
 
 FROM base
-COPY --from=builder /$NAME/$NAME* /usr/bin/
+COPY --from=builder /build/monero* /usr/bin/
 
 ARG m_USER=monerod
 ARG m_UID=801

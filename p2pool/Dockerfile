@@ -1,13 +1,4 @@
 FROM debian:12-slim as base
-
-ENV NAME=p2pool
-ENV VERSION=v3.8
-ENV PACKAGE=$NAME-$VERSION
-ENV ARCH=linux-x64
-ENV TARBALL=$PACKAGE-$ARCH.tar.gz
-ENV DOWNLOAD=https://github.com/SChernykh/$NAME/releases/download
-ENV HASH=019d62a4bb6d3cf22950e07ad9b49158e6fdadc006a7589edf077b338f0baf98
-
 RUN set -eux \
   \
   && apt-get -y update \
@@ -17,18 +8,36 @@ RUN set -eux \
   && rm -rf /var/lib/apt
 
 FROM base as builder
-RUN set -eux \
+
+ARG NAME=p2pool
+ARG VERSION=v3.8
+ARG PACKAGE=$NAME-$VERSION
+ARG DOWNLOAD=https://github.com/SChernykh/$NAME/releases/download
+
+RUN set -eux; \
   \
+  case $(uname -m) in \
+  x86_64) \
+    ARCH=linux-x64 \
+    HASH=019d62a4bb6d3cf22950e07ad9b49158e6fdadc006a7589edf077b338f0baf98 \
+    ;; \
+  aarch64) \
+    ARCH=linux-aarch64 \
+    HASH=3b233ae9e08fc2d5cd6698a1706c5869c9efa36b6db5e2752b766e29bc599f07 \
+    ;; \
+  *) exit 1 ;; \
+  esac; \
+  TARBALL=$PACKAGE-$ARCH.tar.gz; \
+  echo "$HASH  $TARBALL" > SHA256SUMS \
   && curl -Lo $TARBALL $DOWNLOAD/$VERSION/$TARBALL \
-  && sha256sum $TARBALL \
-  && echo "$HASH  $TARBALL" > SHA256SUMS \
   && sha256sum -c SHA256SUMS \
-  && tar xf $TARBALL
+  && tar xf $TARBALL \
+  && mv /$PACKAGE-$ARCH /build
 
 FROM base
-COPY --from=builder /$PACKAGE-$ARCH/p2pool /usr/bin
+COPY --from=builder /build/p2pool /usr/bin
 
-ARG m_USER=$NAME
+ARG m_USER=p2pool
 ARG m_UID=802
 ARG m_GID=$m_UID
 
