@@ -1,0 +1,173 @@
+---
+- hosts: all
+  vars:
+    services:
+      monerod:
+        uid: 801
+
+      p2pool:
+        uid: 802
+
+      p2pool-tor:
+        volume:
+          name: p2pool-tor-service
+          mode: "02700"
+
+  vars_files:
+    - vars/p2pool-tor-service.yml
+
+  tasks:
+    - debug:
+        var: ansible_facts
+      tags:
+        - never
+        - debug
+
+    - name: Remote user's home directory has correct permissions
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0700"
+      loop:
+        - "{{ ansible_user_dir }}"
+        - "{{ ansible_user_dir }}/.ssh"
+      tags:
+        - users
+        - ssh
+
+    - name: Remote user has ~/.ssh/authorized_keys
+      ansible.builtin.copy:
+        src: ~/.ssh/authorized_keys
+        dest: "{{ ansible_user_dir }}/.ssh/authorized_keys"
+        mode: "0600"
+      tags:
+        - users
+        - ssh
+
+    - name: Remote user has safe bash aliases
+      ansible.builtin.copy:
+        dest: ~/.bash_aliases
+        content: |
+          alias ll="ls -l"
+          alias rm="rm -i"
+          alias cp="cp -i"
+          alias mv="mv -i"
+      tags:
+        - users
+
+    - name: Wi-Fi is not enabled
+      ansible.builtin.file:
+        path: /etc/wpa_supplicant/wpa_supplicant.conf
+        state: absent
+      become: yes
+      tags:
+        - network
+
+    - name: Required packages are installed
+      ansible.builtin.apt:
+        pkg:
+          - docker.io
+          - docker-compose
+          - git
+          - openssh-server
+          - tmux
+          - unattended-upgrades
+      become: yes
+      tags:
+        - packages
+        - docker
+        - git
+        - ssh
+
+    - name: Remote user is in correct groups
+      ansible.builtin.user:
+        name: "{{ ansible_user_id }}"
+        groups: docker, sudo
+      become: yes
+      tags:
+        - users
+        - docker
+
+    - name: Unattended upgrades are configured
+      ansible.builtin.debconf:
+        name: unattended-upgrades
+        question: unattended-upgrades/enable_auto_updates
+        value: yes
+        vtype: boolean
+      become: yes
+      tags:
+        - packages
+
+    - name: Unattended upgrades are enabled
+      ansible.builtin.lineinfile:
+        path: /etc/apt/apt.conf.d/20auto-upgrades
+        regexp: ^(APT::Periodic::{{ item }})
+        line: \g<1> "1";
+        backrefs: yes
+      loop:
+        - Update-Package-Lists
+        - Unattended-Upgrade
+      become: yes
+      tags:
+        - packages
+
+    - name: sshd is enabled and running
+      ansible.builtin.systemd:
+        name: ssh
+        enabled: true
+        masked: no
+        state: started
+      become: yes
+      tags:
+        - ssh
+
+    - name: Docker is enabled and running
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        masked: no
+        state: started
+      become: yes
+      tags:
+        - docker
+
+    - name: git is configured
+      ansible.builtin.copy:
+        src: ~/.gitconfig
+        dest: ~/.gitconfig
+        mode: "0644"
+      tags:
+        - git
+
+    - name: services are configured
+      ansible.builtin.include_tasks:
+        file: tasks/service.yml
+        apply:
+          tags:
+            - always
+      loop: "{{ services | list }}"
+      loop_control:
+        loop_var: name
+      vars:
+        service: "{{ services[name] }}"
+      tags:
+        - users
+        - docker
+        - services
+
+    - name: p2pool-tor-service volume directory is populated
+      ansible.builtin.copy:
+        dest: "{{ (dirname, filename) | path_join }}"
+        content: "{{ p2pool_tor_service[filename] }}"
+        owner: 101
+        group: 103
+        mode: "0600"
+      loop: "{{ p2pool_tor_service | list }}"
+      loop_control:
+        loop_var: filename
+      vars:
+        dirname: /var/lib/docker/volumes/p2pool-tor-service/_data/hidden_service
+      become: yes
+      tags:
+        - services
+        - tor

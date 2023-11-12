@@ -1,0 +1,43 @@
+---
+- name: "{{ name }} group exists and has the correct GID"
+  ansible.builtin.group:
+    name: "{{ name }}"
+    state: present
+    gid: "{{ service.gid | default(service.uid) }}"
+  when: "'gid' in service or 'uid' in service"
+  become:  yes
+
+- name: "{{ name }} user exists and has the correct UID"
+  ansible.builtin.user:
+    name: "{{ name }}"
+    state: present
+    system: true
+    uid: "{{ service.uid }}"
+    group: "{{ name }}"
+    password: "*"
+    home: /nonexistent
+    create_home: no
+    shell: /usr/sbin/nologin
+    umask: "0077"
+  when: "'uid' in service"
+  become: yes
+
+- block:
+    - name: "{{ volume }} volume exists"
+      community.docker.docker_volume:
+        name: "{{ volume }}"
+        state: present
+      register: docker_volume
+
+    - name: "{{ volume }} volume directory has correct permissions"
+      ansible.builtin.file:
+        path: "{{ docker_volume.volume.Mountpoint }}"
+        state: directory
+        owner: "{{ name }}"
+        group: "{{ name }}"
+        mode: "{{ service.volume.mode | default('0755') }}"
+      when: "'uid' in service"
+      become: yes
+
+  vars:
+    volume: "{{ service.volume.name | default(name) }}"
