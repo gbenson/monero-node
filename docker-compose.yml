@@ -49,8 +49,8 @@ services:
          SGQXx1o5Kk14F4Gj1zDwdfyuBbSwDFKmmFhovTrX976BRNe"
 
   p2pool-tor:
-    image: gbenson/tor-hidden-service
-    build: tor-hidden-service
+    image: gbenson/tor-node
+    build: tor-node
     container_name: p2pool-tor
     restart: unless-stopped
     depends_on:
@@ -59,6 +59,8 @@ services:
       - p2pool
     volumes:
       - p2pool-tor-service:/var/lib/tor
+    command:
+      - p2pool:3333
 
 volumes:
   monerod:
