@@ -50,7 +50,6 @@ services:
 
   p2pool-tor:
     image: gbenson/tor-node
-    build: tor-node
     container_name: p2pool-tor
     restart: unless-stopped
     depends_on:

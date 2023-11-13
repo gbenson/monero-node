@@ -13,8 +13,6 @@ if [ $# -eq 1 ]; then
     host=$(echo "$1" | sed "s/:$port\$//")
   fi
 fi
-echo "HOST=$host"
-echo "PORT=$port"
 
 if [ -n "$port" ]; then
   f=/etc/tor/torrc
