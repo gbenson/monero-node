@@ -48,8 +48,22 @@ services:
       - "4APvq9TNgrBSYjZ4AvVJpvgh493nzMjmzUNK6EL4aAJiGr1d\
          SGQXx1o5Kk14F4Gj1zDwdfyuBbSwDFKmmFhovTrX976BRNe"
 
+  p2pool-tor:
+    image: gbenson/tor-hidden-service
+    build: tor-hidden-service
+    container_name: p2pool-tor
+    restart: unless-stopped
+    depends_on:
+      - p2pool
+    links:
+      - p2pool
+    volumes:
+      - p2pool-tor-service:/var/lib/tor
+
 volumes:
   monerod:
     external: true
   p2pool:
+    external: true
+  p2pool-tor-service:
     external: true
