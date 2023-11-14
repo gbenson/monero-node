@@ -1,0 +1,2 @@
+POOL=ptkdyo72ibo5edkviouk5w5octxk5d7szizdlgxepfygckeiyt7cdiqd.onion:3333
+WALLET=4APvq9TNgrBSYjZ4AvVJpvgh493nzMjmzUNK6EL4aAJiGr1dSGQXx1o5Kk14F4Gj1zDwdfyuBbSwDFKmmFhovTrX976BRNe
