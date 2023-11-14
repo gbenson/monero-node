@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -9,7 +10,7 @@ import (
 
 func main() {
 	app := miner.Runner{}
-	if err := app.Run(); err != nil {
+	if err := app.Run(context.Background()); err != nil {
 		fmt.Println("tor-miner:", err)
 		os.Exit(1)
 	}
