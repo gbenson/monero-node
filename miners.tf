@@ -1,12 +1,12 @@
-resource "openstack_networking_secgroup_v2" "xmrig" {
-  name        = "xmrig"
-  description = "Security group for XMRig nodes"
-}
-
 variable "num_miners" {
   description = "Number of miner instances to provision"
   type        = number
   default     = 0
+}
+
+resource "openstack_networking_secgroup_v2" "xmrig" {
+  name        = "xmrig"
+  description = "Security group for XMRig nodes"
 }
 
 resource "openstack_compute_instance_v2" "miner" {
