@@ -1,7 +1,7 @@
 variable "num_miners" {
   description = "Number of miner instances to provision"
   type        = number
-  default     = 0
+  default     = 1
 }
 
 resource "openstack_networking_secgroup_v2" "xmrig" {
