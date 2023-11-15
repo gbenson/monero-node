@@ -5,36 +5,53 @@ compute providers.  Basically just something I can leave running
 while I figure out config, pricing and hardening on whatever platform
 I'm evaluating.
 
-## Setup
-Clone the repo:
+## Initial setup
+### Terraform
+
+This repository is set up to store Terraform's state in a submodule
+which it accesses via `git clone terraform@terraform:monero-node`.
+To make this work you need to add the hostname or IP address of the
+server holding that repo to either `/etc/hosts` or to your
+`~/.ssh/config`. I did the latter:
+
 ```sh
-git clone https://github.com/gbenson/monero-node.git
+cat >>~/.ssh/config <<EOF
+Host terraform
+Hostname (you know it)
+ForwardX11 no
+ForwardAgent no
+Compression no
+EOF
+```
+
+Once that's done you can recursively clone the repo:
+```sh
+git clone --recursive https://github.com/gbenson/monero-node.git
 cd monero-node
 ```
-Create a virtual environment:
+
+### OpenStack client
+This part is optional unless you want to use the OpenStack client
+directly.  Create a Python virtual environment:
 ```sh
 python3 -m venv venv
 . venv/bin/activate
 ```
+
 Upgrade pip, install OpenStack client:
 ```sh
 pip install --upgrade pip
 pip install python-openstackclient
 ```
-Source OpenStack config and credentials:
+
+## Usage
+Source OpenStack configuration and credentials:
 ```sh
 . ~/.config/gbenson/secrets/openstack-openrc.sh
 ```
 
-## Usage
+Update infrastructure to match definition:
 ```sh
 terraform fmt && terraform plan -out=tfplan
 terraform apply tfplan
-```
-
-## Admin
-Tweak monerod local settings:
-```sh
-sudo nano /var/lib/docker/volumes/monerod/_data/bitmonero.conf
-sudo systemctl restart monerod
 ```

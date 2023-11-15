@@ -1,0 +1,3 @@
+[submodule ".tfstate"]
+	path = .tfstate
+	url = terraform@terraform:monero-node
