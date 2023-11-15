@@ -16,18 +16,6 @@ RUN mv $NAME-$VERSION /build/xmrig
 
 WORKDIR /build/xmrig
 RUN sha256sum -c SHA256SUMS
-RUN sed \
-  -e 's/"[^"]*:3333"/"@@POOL@@"/' \
-  -e 's/YOUR_WALLET_ADDRESS/@@WALLET@@/' \
-  config.json >config.json.in
-
-COPY config.sh .
-RUN sed \
-  -e 's:^\([^=]*\)=\(.*\)$:s/@@\1@@/\2/g:' \
-  config.sh > config.sed
-RUN sed \
-  -f config.sed \
-  config.json.in >config.json
 
 WORKDIR /build
 COPY go.* *.go ./
@@ -38,11 +26,9 @@ FROM gbenson/tor-node
 RUN set -eux \
   \
   && mkdir /usr/libexec/tor-miner \
-  && mv /entrypoint.sh /usr/libexec/tor-miner/start-tor \
-  && mkdir -m0700 /etc/xmrig
+  && mv /entrypoint.sh /usr/libexec/tor-miner/start-tor
 
 COPY --from=builder --chown=0:0 /build/xmrig/xmrig /usr/bin
-COPY --from=builder --chown=0:0 /build/xmrig/config.json /etc/xmrig
 COPY --from=builder --chown=0:0 /build/tor-miner /usr/bin
 
 ENTRYPOINT ["tor-miner"]
