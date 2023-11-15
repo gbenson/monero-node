@@ -3,11 +3,6 @@ resource "openstack_networking_secgroup_v2" "default" {
   description = "Default security group"
 }
 
-variable "admin_ip_prefix" {
-  type        = string
-  description = "CIDR from which administration may be performed"
-}
-
 # Inbound ICMP and IPv6-ICMP is allowed
 resource "openstack_networking_secgroup_rule_v2" "inbound_ipv4_icmp" {
   direction         = "ingress"
