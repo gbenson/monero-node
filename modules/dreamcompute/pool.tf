@@ -1,9 +1,3 @@
-variable "num_pools" {
-  description = "Number of P2Pool nodes to provision"
-  type        = number
-  default     = 0
-}
-
 resource "openstack_networking_secgroup_v2" "monerod" {
   name        = "monerod"
   description = "Security group for Monero nodes"
@@ -63,44 +57,44 @@ resource "openstack_networking_secgroup_rule_v2" "inbound_ipv4_stratum" {
 # monerod needs <1GiB to run once synced, but >2GiB to sync
 # from scratch.  P2Pool needs 2.6 GiB RAM to run properly.
 resource "openstack_compute_instance_v2" "p2pool_node" {
-  count               = var.num_pools
+  count               = var.pool_count
   name                = "p2pool_node"
   key_pair            = openstack_compute_keypair_v2.keypair.id
   security_groups     = ["default", "monerod", "p2pool_mini"]
   flavor_name         = "gp1.warpspeed"
   image_name          = "Ubuntu-22.04"
-  user_data           = file("setup-p2pool-node.sh")
+  user_data           = file("modules/dreamcompute/setup-pool.sh")
   stop_before_destroy = true
 }
 
 resource "openstack_blockstorage_volume_v3" "monerod" {
-  count       = var.num_pools < 1 ? 1 : var.num_pools
+  count       = var.pool_count < 1 ? 1 : var.pool_count
   name        = "monerod"
   description = "Monero blockchain"
   size        = 80
 }
 
 resource "openstack_blockstorage_volume_v3" "p2pool" {
-  count       = var.num_pools
+  count       = var.pool_count
   name        = "p2pool"
   description = "P2Pool cache"
   size        = 1
 }
 
 resource "openstack_compute_volume_attach_v2" "p2pool_monerod" {
-  count       = var.num_pools
+  count       = var.pool_count
   instance_id = openstack_compute_instance_v2.p2pool_node[count.index].id
   volume_id   = openstack_blockstorage_volume_v3.monerod[count.index].id
 }
 
 resource "openstack_compute_volume_attach_v2" "p2pool_p2pool" {
-  count       = var.num_pools
+  count       = var.pool_count
   instance_id = openstack_compute_instance_v2.p2pool_node[count.index].id
   volume_id   = openstack_blockstorage_volume_v3.p2pool[count.index].id
 }
 
 resource "dreamhost_dns_record" "p2pool_node" {
-  count  = var.num_pools
+  count  = var.pool_count
   record = "p2pool${count.index > 1 ? count.index : ""}.gbenson.net"
   type   = "A"
   value  = openstack_compute_instance_v2.p2pool_node[count.index].access_ip_v4

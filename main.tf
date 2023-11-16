@@ -1,16 +1,17 @@
 terraform {
   required_version = ">= 0.14.0"
-  required_providers {
-    openstack = {
-      source  = "terraform-provider-openstack/openstack"
-      version = "~> 1.53.0"
-    }
-    dreamhost = {
-      source  = "adamantal/dreamhost"
-      version = "0.3.2"
-    }
-  }
+
   backend "local" {
     path = ".tfstate/terraform.tfstate"
   }
+}
+
+module "dreamcompute" {
+  source = "./modules/dreamcompute"
+
+  admin_ip_prefix = var.admin_ip_prefix
+  admin_ssh_key   = var.admin_ssh_key
+
+  pool_count  = 0
+  miner_count = 1
 }

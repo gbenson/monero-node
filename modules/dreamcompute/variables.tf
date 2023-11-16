@@ -7,3 +7,13 @@ variable "admin_ssh_key" {
   type        = string
   description = "SSH public key for server admin"
 }
+
+variable "pool_count" {
+  description = "Number of P2Pool nodes to provision"
+  type        = number
+}
+
+variable "miner_count" {
+  description = "Number of miner instances to provision"
+  type        = number
+}
