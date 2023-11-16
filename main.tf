@@ -6,6 +6,10 @@ terraform {
   }
 }
 
+module "aws" {
+  source = "./modules/aws"
+}
+
 module "dreamcompute" {
   source = "./modules/dreamcompute"
 
