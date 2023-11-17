@@ -10,6 +10,6 @@ def lambda_handler(event, context):
         "body": json.dumps({
             "message": "Hello world!",
             "event": event,
-            "environ": os.environ,
+            "environ": dict(os.environ.items()),
         })
     }
