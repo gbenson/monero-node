@@ -10,7 +10,7 @@ resource "openstack_compute_instance_v2" "miner" {
   security_groups = ["default", "xmrig"]
   flavor_name     = "gp1.lightspeed"
   image_name      = "Ubuntu-22.04"
-  user_data       = file("modules/setup-miner.sh")
+  user_data       = file("${path.module}/../setup-miner.sh")
 }
 
 resource "dreamhost_dns_record" "miner" {

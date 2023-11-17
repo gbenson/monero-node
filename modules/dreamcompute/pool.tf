@@ -63,7 +63,7 @@ resource "openstack_compute_instance_v2" "p2pool_node" {
   security_groups     = ["default", "monerod", "p2pool_mini"]
   flavor_name         = "gp1.warpspeed"
   image_name          = "Ubuntu-22.04"
-  user_data           = file("modules/dreamcompute/setup-pool.sh")
+  user_data           = file("${path.module}/setup-pool.sh")
   stop_before_destroy = true
 }
 
