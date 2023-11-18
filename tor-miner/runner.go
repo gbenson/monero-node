@@ -18,8 +18,9 @@ const (
 	DefaultMinerPath = "xmrig"
 	DefaultPool      = "ptkdyo72ibo5edkviouk5w5oct" +
 		"xk5d7szizdlgxepfygckeiyt7cdiqd.onion:3333"
-	TorProxyAddr   = "127.0.0.1:9050"
-	DefaultAPIAddr = "127.0.0.1:3638"
+	TorProxyAddr      = "127.0.0.1:9050"
+	TorStartupTimeout = time.Minute
+	DefaultAPIAddr    = "127.0.0.1:3638"
 )
 
 var httpAPI = regexp.MustCompile(`HTTP API\s+(\S+:\d+)\n`)
@@ -28,8 +29,8 @@ type Runner struct {
 	MinerPath string
 	MinerArgs []string
 
-	LocalAddr    string
-	OnionAddr    string
+	LocalAddr   string
+	OnionAddr   string
 	AccessToken string
 
 	isStarted bool
@@ -104,21 +105,30 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// Start Tor
-	for i := 0; i < 600 && !isTorRunning(); i++ {
-		if r.tor != nil {
-			time.Sleep(100 * time.Millisecond)
-			continue
+	for start := time.Now(); !isTorRunning(); {
+		if r.tor == nil {
+			torctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
+			r.tor = r.newProxyCommand(torctx)
+			defer reap(r.tor, cancel)
+
+			fmt.Println("tor-miner: starting Tor")
+			if err = r.startProxy(); err != nil {
+				return err
+			}
+		}
+		if time.Now().Sub(start) > TorStartupTimeout {
+			fmt.Println("tor-miner: timed out waiting for Tor")
+			break // maybe it'll work? let the monitor handle it
+		}
+		time.Sleep(100 * time.Millisecond)
+
+		if !isRunning(r.tor.Process) {
+			fmt.Println("tor-miner: Tor startup failed")
+			break // as above, let the monitor figure this out
 		}
 
-		torctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
-		r.tor = r.newProxyCommand(torctx)
-		defer reap(r.tor, cancel)
-
-		if err = r.startProxy(); err != nil {
-			return err
-		}
 	}
 
 	// Enable full remote access to XMRig's API if we have a hidden
@@ -146,6 +156,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.cmd.Stdout = os.Stdout
 	r.cmd.Stderr = os.Stdout
+	fmt.Println("tor-miner: starting XMrig")
 	if err = r.cmd.Start(); err != nil {
 		return err
 	}
