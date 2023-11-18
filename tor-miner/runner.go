@@ -148,10 +148,10 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// Start XMRig
-	ctx, cancel := context.WithCancel(ctx)
+	rigctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	r.cmd = r.newMinerCommand(ctx)
+	r.cmd = r.newMinerCommand(rigctx)
 	defer reap(r.cmd, cancel)
 
 	r.cmd.Stdout = os.Stdout
@@ -161,9 +161,16 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// XXX http api status reporting
-	// XXX kill xmrig if tor dies
-	return r.cmd.Wait()
+	// Begin monitoring
+	cmds := []*exec.Cmd{r.cmd}
+	if r.tor != nil {
+		cmds = append(cmds, r.tor)
+	}
+	onionURL := r.OnionAddr
+	if onionURL != "" {
+		onionURL = "http://" + onionURL
+	}
+	return monitor(ctx, cmds, "http://"+r.LocalAddr, onionURL, r.AccessToken)
 }
 
 func (r *Runner) dryRun(ctx context.Context) (string, error) {
