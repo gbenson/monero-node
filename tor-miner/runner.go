@@ -2,7 +2,6 @@ package miner
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/base32"
 	"fmt"
 	"net"
@@ -90,14 +89,13 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.MinerArgs = append(r.MinerArgs, opts...)
 
 		if r.AccessToken == "" {
-			var buf [32]byte
-			_, err := rand.Read(buf[:])
+			buf, err := randomBytes(32)
 			if err != nil {
 				return err
 			}
 
 			r.AccessToken = strings.ToLower(strings.TrimRight(
-				base32.StdEncoding.EncodeToString(buf[:]), "="))
+				base32.StdEncoding.EncodeToString(buf), "="))
 		}
 
 		opts = []string{"--http-access-token", r.AccessToken}

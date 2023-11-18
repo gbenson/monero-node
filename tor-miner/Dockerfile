@@ -18,7 +18,9 @@ WORKDIR /build/xmrig
 RUN sha256sum -c SHA256SUMS
 
 WORKDIR /build
-COPY go.* *.go ./
+COPY go.* ./
+RUN go mod download
+COPY *.go ./
 COPY cmd ./cmd
 RUN go build -trimpath ./cmd/tor-miner
 
