@@ -2,6 +2,8 @@ package miner
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base32"
 	"fmt"
 	"net"
 	"os"
@@ -25,8 +27,11 @@ var httpAPI = regexp.MustCompile(`HTTP API\s+(\S+:\d+)\n`)
 type Runner struct {
 	MinerPath string
 	MinerArgs []string
-	LocalAPI  string
-	OnionAPI  string
+
+	LocalAddr    string
+	OnionAddr    string
+	AccessToken string
+
 	isStarted bool
 	cmd       *exec.Cmd
 	tor       *exec.Cmd
@@ -44,8 +49,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.MinerArgs == nil {
 		r.MinerArgs = os.Args[1:]
 	}
-	if r.LocalAPI == "" {
-		r.LocalAPI = DefaultAPIAddr
+	if r.LocalAddr == "" {
+		r.LocalAddr = DefaultAPIAddr
 	}
 
 	// Capture the --dry-run output, supplying the default
@@ -72,9 +77,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	m := httpAPI.FindStringSubmatch(out)
 	apiConfigured := len(m) > 1
 	if apiConfigured {
-		r.LocalAPI = m[1]
+		r.LocalAddr = m[1]
 	}
-	host, port, err := net.SplitHostPort(r.LocalAPI)
+	host, port, err := net.SplitHostPort(r.LocalAddr)
 	if err != nil {
 		os.Stdout.WriteString(out)
 		return err
@@ -82,12 +87,25 @@ func (r *Runner) Run(ctx context.Context) error {
 	if !apiConfigured {
 		opts := []string{"--http-host", host, "--http-port", port}
 		r.MinerArgs = append(r.MinerArgs, opts...)
+
+		if r.AccessToken == "" {
+			var buf [32]byte
+			_, err := rand.Read(buf[:])
+			if err != nil {
+				return err
+			}
+
+			r.AccessToken = strings.ToLower(strings.TrimRight(
+				base32.StdEncoding.EncodeToString(buf[:]), "="))
+		}
+
+		opts = []string{"--http-access-token", r.AccessToken}
+		r.MinerArgs = append(r.MinerArgs, opts...)
 	}
 
 	// Start Tor
-	torStarted := false
 	for i := 0; i < 600 && !isTorRunning(); i++ {
-		if torStarted {
+		if r.tor != nil {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
@@ -101,14 +119,23 @@ func (r *Runner) Run(ctx context.Context) error {
 		if err = r.startProxy(); err != nil {
 			return err
 		}
-
-		torStarted = true
 	}
 
-	// Enable full remote access to XMRig's API if we can determine
-	// the hidden service URL we'll expose it over.  Making this a
-	// soft failure enables out-of-container non-root-user testing.
-	// XXX
+	// Enable full remote access to XMRig's API if we have a hidden
+	// service URL to expose it over.  Having this a soft requirement
+	// enables out-of-container testing by non-root users.
+	bytes, err := os.ReadFile("/var/lib/tor/hidden_service/hostname")
+	if err != nil {
+		fmt.Println("tor-miner:", err)
+	} else {
+		s := strings.TrimSpace(string(bytes))
+		if strings.HasSuffix(s, ".onion") {
+			r.OnionAddr = s + ":" + port
+		}
+	}
+	if !apiConfigured && r.OnionAddr != "" && r.AccessToken != "" {
+		r.MinerArgs = append(r.MinerArgs, "--http-no-restricted")
+	}
 
 	// Start XMRig
 	ctx, cancel := context.WithCancel(ctx)
@@ -145,7 +172,7 @@ func (r *Runner) newProxyCommand(ctx context.Context) *exec.Cmd {
 	if path.Base(dir) == "bin" {
 		dir = path.Join(path.Dir(dir), "libexec", "tor-miner")
 	}
-	return exec.CommandContext(ctx, path.Join(dir, "start-tor"), r.LocalAPI)
+	return exec.CommandContext(ctx, path.Join(dir, "start-tor"), r.LocalAddr)
 }
 
 func (r *Runner) startProxy() error {
