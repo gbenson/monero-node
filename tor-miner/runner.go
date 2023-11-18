@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -15,12 +16,17 @@ const (
 	DefaultMinerPath = "xmrig"
 	DefaultPool      = "ptkdyo72ibo5edkviouk5w5oct" +
 		"xk5d7szizdlgxepfygckeiyt7cdiqd.onion:3333"
-	TorHostPort = "127.0.0.1:9050"
+	TorProxyAddr   = "127.0.0.1:9050"
+	DefaultAPIAddr = "127.0.0.1:3638"
 )
+
+var httpAPI = regexp.MustCompile(`HTTP API\s+(\S+:\d+)\n`)
 
 type Runner struct {
 	MinerPath string
 	MinerArgs []string
+	LocalAPI  string
+	OnionAPI  string
 	isStarted bool
 	cmd       *exec.Cmd
 	tor       *exec.Cmd
@@ -38,6 +44,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.MinerArgs == nil {
 		r.MinerArgs = os.Args[1:]
 	}
+	if r.LocalAPI == "" {
+		r.LocalAPI = DefaultAPIAddr
+	}
 
 	// Capture the --dry-run output, supplying the default
 	// configuration file if necessary.
@@ -53,31 +62,53 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// Start Tor if necessary.
+	// Specify routing over Tor, if necessary
 	if strings.Contains(out, ".onion:") {
-		torStarted := false
-		for i := 0; i < 600 && !isTorRunning(); i++ {
-			if torStarted {
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
+		opt := []string{"-x", TorProxyAddr}
+		r.MinerArgs = append(opt, r.MinerArgs...)
+	}
 
-			torctx, cancel := context.WithCancel(ctx)
-			defer cancel()
+	// Discover or configure our HTTP API details
+	m := httpAPI.FindStringSubmatch(out)
+	apiConfigured := len(m) > 1
+	if apiConfigured {
+		r.LocalAPI = m[1]
+	}
+	host, port, err := net.SplitHostPort(r.LocalAPI)
+	if err != nil {
+		os.Stdout.WriteString(out)
+		return err
+	}
+	if !apiConfigured {
+		opts := []string{"--http-host", host, "--http-port", port}
+		r.MinerArgs = append(r.MinerArgs, opts...)
+	}
 
-			r.tor = r.newProxyCommand(torctx)
-			defer reap(r.tor, cancel)
-
-			if err = r.startProxy(); err != nil {
-				return err
-			}
-
-			torStarted = true
+	// Start Tor
+	torStarted := false
+	for i := 0; i < 600 && !isTorRunning(); i++ {
+		if torStarted {
+			time.Sleep(100 * time.Millisecond)
+			continue
 		}
 
-		opt := []string{"-x", TorHostPort}
-		r.MinerArgs = append(r.MinerArgs, opt...)
+		torctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		r.tor = r.newProxyCommand(torctx)
+		defer reap(r.tor, cancel)
+
+		if err = r.startProxy(); err != nil {
+			return err
+		}
+
+		torStarted = true
 	}
+
+	// Enable full remote access to XMRig's API if we can determine
+	// the hidden service URL we'll expose it over.  Making this a
+	// soft failure enables out-of-container non-root-user testing.
+	// XXX
 
 	// Start XMRig
 	ctx, cancel := context.WithCancel(ctx)
@@ -114,7 +145,7 @@ func (r *Runner) newProxyCommand(ctx context.Context) *exec.Cmd {
 	if path.Base(dir) == "bin" {
 		dir = path.Join(path.Dir(dir), "libexec", "tor-miner")
 	}
-	return exec.CommandContext(ctx, path.Join(dir, "start-tor"))
+	return exec.CommandContext(ctx, path.Join(dir, "start-tor"), r.LocalAPI)
 }
 
 func (r *Runner) startProxy() error {
@@ -125,7 +156,7 @@ func (r *Runner) startProxy() error {
 }
 
 func isTorRunning() bool {
-	conn, err := net.Dial("tcp", TorHostPort)
+	conn, err := net.Dial("tcp", TorProxyAddr)
 	if err != nil {
 		return false
 	}
