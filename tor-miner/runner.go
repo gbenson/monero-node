@@ -3,16 +3,19 @@ package miner
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
+	"time"
 )
 
 const (
 	DefaultMinerPath = "xmrig"
 	DefaultPool      = "ptkdyo72ibo5edkviouk5w5oct" +
 		"xk5d7szizdlgxepfygckeiyt7cdiqd.onion:3333"
+	TorHostPort = "127.0.0.1:9050"
 )
 
 type Runner struct {
@@ -52,19 +55,27 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// Start Tor if necessary.
 	if strings.Contains(out, ".onion:") {
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
+		torStarted := false
+		for i := 0; i < 600 && !isTorRunning(); i++ {
+			if torStarted {
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
 
-		r.tor = r.newProxyCommand(ctx)
-		defer reap(r.tor, cancel)
+			torctx, cancel := context.WithCancel(ctx)
+			defer cancel()
 
-		r.tor.Stdout = os.Stderr
-		r.tor.Stderr = os.Stderr
-		if err = r.tor.Start(); err != nil {
-			return err
+			r.tor = r.newProxyCommand(torctx)
+			defer reap(r.tor, cancel)
+
+			if err = r.startProxy(); err != nil {
+				return err
+			}
+
+			torStarted = true
 		}
 
-		opt := []string{"-x", "127.0.0.1:9050"}
+		opt := []string{"-x", TorHostPort}
 		r.MinerArgs = append(r.MinerArgs, opt...)
 	}
 
@@ -81,8 +92,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// XXX decorate tor logs
-	// XXX interleave tor/xmrig logs correctly
 	// XXX http api status reporting
 	// XXX kill xmrig if tor dies
 	return r.cmd.Wait()
@@ -106,6 +115,22 @@ func (r *Runner) newProxyCommand(ctx context.Context) *exec.Cmd {
 		dir = path.Join(path.Dir(dir), "libexec", "tor-miner")
 	}
 	return exec.CommandContext(ctx, path.Join(dir, "start-tor"))
+}
+
+func (r *Runner) startProxy() error {
+	r.tor.Stdout = os.Stderr
+	r.tor.Stderr = os.Stderr
+
+	return r.tor.Start()
+}
+
+func isTorRunning() bool {
+	conn, err := net.Dial("tcp", TorHostPort)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
 }
 
 func reap(cmd *exec.Cmd, cancel context.CancelFunc) {
