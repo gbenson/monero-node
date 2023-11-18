@@ -20,7 +20,7 @@ RUN sha256sum -c SHA256SUMS
 WORKDIR /build
 COPY go.* *.go ./
 COPY cmd ./cmd
-RUN go build -trimpath -o tor-miner ./cmd/main.go
+RUN go build -trimpath ./cmd/tor-miner
 
 FROM gbenson/tor-node
 RUN set -eux \
