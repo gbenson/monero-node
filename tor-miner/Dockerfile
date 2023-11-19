@@ -20,7 +20,7 @@ RUN sha256sum -c SHA256SUMS
 WORKDIR /build
 COPY go.* ./
 RUN go mod download
-COPY *.go ./
+COPY *.go sealed.config ./
 COPY cmd ./cmd
 RUN go build -trimpath ./cmd/tor-miner
 

@@ -14,9 +14,7 @@ import (
 )
 
 const (
-	DefaultMinerPath = "xmrig"
-	DefaultPool      = "ptkdyo72ibo5edkviouk5w5oct" +
-		"xk5d7szizdlgxepfygckeiyt7cdiqd.onion:3333"
+	DefaultMinerPath  = "xmrig"
 	TorProxyAddr      = "127.0.0.1:9050"
 	TorStartupTimeout = time.Minute
 	DefaultAPIAddr    = "127.0.0.1:3638"
@@ -38,16 +36,24 @@ type Runner struct {
 }
 
 func (r *Runner) Run(ctx context.Context) error {
+	if len(os.Args) < 2 {
+		return panique("invocation error")
+	}
 	if r.isStarted {
 		return panique("already started")
 	}
 	r.isStarted = true
 
+	config, err := DefaultConfig(os.Args[1])
+	if err != nil {
+		return err
+	}
+
 	if r.MinerPath == "" {
 		r.MinerPath = DefaultMinerPath
 	}
 	if r.MinerArgs == nil {
-		r.MinerArgs = os.Args[1:]
+		r.MinerArgs = os.Args[2:]
 	}
 	if r.LocalAddr == "" {
 		r.LocalAddr = DefaultAPIAddr
@@ -57,7 +63,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// configuration file if necessary.
 	out, err := r.dryRun(ctx)
 	if strings.Contains(out, "no valid configuration found") {
-		opt := []string{"-o", DefaultPool}
+		opt := []string{"-o", config.Pool.URL}
 		r.MinerArgs = append(opt, r.MinerArgs...)
 		out, err = r.dryRun(ctx)
 	}

@@ -1,7 +1,9 @@
 package miner
 
 import (
+	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,9 +16,36 @@ const (
 	sealNonceSizeBytes = 24
 )
 
+//go:embed sealed.config
+var sealedDefaultConfig []byte
+
 type Config struct {
 	Pool    APIEndpoint `json:"pool"`
 	Monitor APIEndpoint `json:"monitor"`
+}
+
+func DefaultConfig(password string) (*Config, error) {
+	salt := sealedDefaultConfig[:kdfSaltSizeBytes]
+	msg := sealedDefaultConfig[kdfSaltSizeBytes:]
+
+	fmt.Println("tor-miner: unpacking credentials")
+	keyBytes := deriveKey([]byte(password), salt, sealKeySizeBytes)
+
+	key := (*[sealKeySizeBytes]byte)(keyBytes)
+	nonce := (*[sealNonceSizeBytes]byte)(msg[:sealNonceSizeBytes])
+	encrypted := msg[sealNonceSizeBytes:]
+
+	encoded, ok := secretbox.Open(nil, encrypted, nonce, key)
+	if !ok {
+		return nil, errors.New("bad passphrase")
+	}
+
+	cfg := &Config{}
+	err := json.Unmarshal(encoded, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }
 
 func (c *Config) Seal(password string) ([]byte, error) {
