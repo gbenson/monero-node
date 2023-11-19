@@ -5,6 +5,7 @@ import (
 	"encoding/base32"
 	"fmt"
 	"net"
+	net_url "net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -26,9 +27,8 @@ type Runner struct {
 	MinerPath string
 	MinerArgs []string
 
-	LocalAddr   string
-	OnionAddr   string
-	AccessToken string
+	LocalAPI APIEndpoint
+	onionAPI *APIEndpoint
 
 	isStarted bool
 	cmd       *exec.Cmd
@@ -55,8 +55,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.MinerArgs == nil {
 		r.MinerArgs = os.Args[2:]
 	}
-	if r.LocalAddr == "" {
-		r.LocalAddr = DefaultAPIAddr
+	if r.LocalAPI.URL == "" {
+		r.LocalAPI.URL = "http://" + DefaultAPIAddr
 	}
 
 	// Capture the --dry-run output, supplying the default
@@ -83,28 +83,31 @@ func (r *Runner) Run(ctx context.Context) error {
 	m := httpAPI.FindStringSubmatch(out)
 	apiConfigured := len(m) > 1
 	if apiConfigured {
-		r.LocalAddr = m[1]
+		r.LocalAPI.URL = "http://" + m[1]
 	}
-	host, port, err := net.SplitHostPort(r.LocalAddr)
+	url, err := net_url.Parse(r.LocalAPI.URL)
 	if err != nil {
 		os.Stdout.WriteString(out)
 		return err
 	}
+	port := url.Port()
 	if !apiConfigured {
+		host := url.Hostname()
 		opts := []string{"--http-host", host, "--http-port", port}
 		r.MinerArgs = append(r.MinerArgs, opts...)
 
-		if r.AccessToken == "" {
+		if r.LocalAPI.AccessToken == "" {
 			buf, err := randomBytes(32)
 			if err != nil {
 				return err
 			}
 
-			r.AccessToken = strings.ToLower(strings.TrimRight(
-				base32.StdEncoding.EncodeToString(buf), "="))
+			r.LocalAPI.AccessToken = strings.ToLower(
+				strings.TrimRight(
+					base32.StdEncoding.EncodeToString(buf), "="))
 		}
 
-		opts = []string{"--http-access-token", r.AccessToken}
+		opts = []string{"--http-access-token", r.LocalAPI.AccessToken}
 		r.MinerArgs = append(r.MinerArgs, opts...)
 	}
 
@@ -144,10 +147,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	} else {
 		s := strings.TrimSpace(string(bytes))
 		if strings.HasSuffix(s, ".onion") {
-			r.OnionAddr = s + ":" + port
+			r.onionAPI = &APIEndpoint{
+				URL:         fmt.Sprintf("http://%s:%s", s, port),
+				AccessToken: r.LocalAPI.AccessToken,
+			}
 		}
 	}
-	if !apiConfigured && r.OnionAddr != "" && r.AccessToken != "" {
+	if !apiConfigured && r.onionAPI != nil && r.onionAPI.AccessToken != "" {
 		r.MinerArgs = append(r.MinerArgs, "--http-no-restricted")
 	}
 
@@ -170,11 +176,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.tor != nil {
 		cmds = append(cmds, r.tor)
 	}
-	onionURL := r.OnionAddr
-	if onionURL != "" {
-		onionURL = "http://" + onionURL
-	}
-	return monitor(ctx, cmds, "http://"+r.LocalAddr, onionURL, r.AccessToken)
+	return monitor(ctx, cmds, &r.LocalAPI, r.onionAPI)
 }
 
 func (r *Runner) dryRun(ctx context.Context) (string, error) {
@@ -194,7 +196,11 @@ func (r *Runner) newProxyCommand(ctx context.Context) *exec.Cmd {
 	if path.Base(dir) == "bin" {
 		dir = path.Join(path.Dir(dir), "libexec", "tor-miner")
 	}
-	return exec.CommandContext(ctx, path.Join(dir, "start-tor"), r.LocalAddr)
+	url, err := net_url.Parse(r.LocalAPI.URL)
+	if err != nil {
+		panic(err)
+	}
+	return exec.CommandContext(ctx, path.Join(dir, "start-tor"), url.Host)
 }
 
 func (r *Runner) startProxy() error {

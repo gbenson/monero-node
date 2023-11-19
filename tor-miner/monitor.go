@@ -12,26 +12,18 @@ import (
 )
 
 type Monitor struct {
-	Children    []*exec.Cmd
-	APIURL      string
-	AccessToken string
-	remoteAPI   map[string]string
+	cmds     []*exec.Cmd
+	localAPI *APIEndpoint
+	onionAPI *APIEndpoint
 }
 
 func monitor(ctx context.Context, cmds []*exec.Cmd,
-	localURL, onionURL, accessToken string) error {
+	localAPI, onionAPI *APIEndpoint) error {
 
 	m := Monitor{
-		Children:    cmds,
-		APIURL:      localURL,
-		AccessToken: accessToken,
-	}
-
-	if onionURL != "" && accessToken != "" {
-		m.remoteAPI = map[string]string{
-			"base_url":     onionURL,
-			"access_token": accessToken,
-		}
+		cmds:     cmds,
+		localAPI: localAPI,
+		onionAPI: onionAPI,
 	}
 
 	time.Sleep(1 * time.Second)
@@ -48,7 +40,7 @@ func (m *Monitor) mainLoop(ctx context.Context) error {
 	// Ensure our subprocesses are still running.  Failure of either
 	// is treated as unrecoverable: we try to report the error and
 	// then terminate.  Recovery is our invoker's problem.
-	for _, cmd := range m.Children {
+	for _, cmd := range m.cmds {
 		if isRunning(cmd.Process) {
 			continue
 		}
@@ -60,12 +52,12 @@ func (m *Monitor) mainLoop(ctx context.Context) error {
 
 	// Get the miner's status
 	req, err := http.NewRequestWithContext(ctx,
-		"GET", m.APIURL+"/2/summary", nil)
+		"GET", m.localAPI.URL+"/2/summary", nil)
 	if err != nil {
 		return m.reportGoError(ctx, err)
 	}
-	if m.AccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+m.AccessToken)
+	if m.localAPI.AccessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+m.localAPI.AccessToken)
 	}
 
 	client := http.Client{Timeout: 30 * time.Second}
@@ -100,13 +92,13 @@ func (m *Monitor) mainLoop(ctx context.Context) error {
 
 func (m *Monitor) reportStatus(ctx context.Context, rr any) error {
 	// Insert the connection details
-	if len(m.remoteAPI) > 0 {
+	if m.onionAPI != nil {
 		switch r := rr.(type) {
 		case map[string]interface{}:
 			if _, ok := r["status"]; ok {
 				r["status"] = "OK"
 			}
-			r["http_api"] = m.remoteAPI
+			r["http_api"] = m.onionAPI
 
 		default:
 			err := fmt.Errorf("unhandled type %T", rr)
