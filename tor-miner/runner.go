@@ -176,7 +176,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.tor != nil {
 		cmds = append(cmds, r.tor)
 	}
-	return monitor(ctx, cmds, &r.LocalAPI, r.onionAPI)
+	return monitor(cmds, &r.LocalAPI, r.onionAPI, &config.Monitor)
 }
 
 func (r *Runner) dryRun(ctx context.Context) (string, error) {
