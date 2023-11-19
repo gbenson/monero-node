@@ -51,17 +51,7 @@ func (m *Monitor) mainLoop(ctx context.Context) error {
 	}
 
 	// Get the miner's status
-	req, err := http.NewRequestWithContext(ctx,
-		"GET", m.localAPI.URL+"/2/summary", nil)
-	if err != nil {
-		return m.reportGoError(ctx, err)
-	}
-	if m.localAPI.AccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+m.localAPI.AccessToken)
-	}
-
-	client := http.Client{Timeout: 30 * time.Second}
-	res, err := client.Do(req)
+	res, err := m.localAPI.Get("/2/summary")
 	if err != nil {
 		return m.reportGoError(ctx, err)
 	}
