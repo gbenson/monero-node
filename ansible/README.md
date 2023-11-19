@@ -33,3 +33,7 @@ Skip gathering facts, run only tasks tagged with "services":
 ```sh
 ANSIBLE_GATHERING=explicit ansible-playbook -t services main.yml
 ```
+Edit p2pool onion service details:
+```sh
+ansible-vault edit vars/p2pool-tor-service.yml
+```
