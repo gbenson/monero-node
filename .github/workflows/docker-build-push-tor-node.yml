@@ -3,7 +3,7 @@ name: Build and push tor-node Docker images
 on:
   push:
     tags:
-      - "tor-[0-9]+.[0-9]+.[0-9]+.[0-9]+-[0-9]+"
+      - "tor-node-[0-9]+.[0-9]+.[0-9]+.[0-9]+-[0-9]+"
 
 jobs:
   docker:
@@ -30,8 +30,8 @@ jobs:
         with:
           images: ${{ vars.DOCKERHUB_USERNAME }}/tor-node
           tags: |
-            type=match,pattern=tor-(\d+\.\d+\.\d+.\d+-\d+),group=1
-            type=match,pattern=tor-(\d+\.\d+\.\d+.\d+),group=1
+            type=match,pattern=tor-node-(\d+\.\d+\.\d+.\d+-\d+),group=1
+            type=match,pattern=tor-node-(\d+\.\d+\.\d+.\d+),group=1
 
       - name: Build and push
         uses: docker/build-push-action@v5
