@@ -18,4 +18,6 @@ module "dreamcompute" {
 
   pool_count  = 0
   miner_count = 1
+
+  tor_miner_config_passphrase = var.tor_miner_config_passphrase
 }
