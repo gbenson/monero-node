@@ -19,7 +19,7 @@ resource "aws_s3_bucket_acl" "lambda_bucket" {
 data "archive_file" "lambda_listener_zip" {
   type = "zip"
 
-  source_dir  = "listener"
+  source_file = "listener/lambda_function.py"
   output_path = ".build/listener-lambda.zip"
 }
 
