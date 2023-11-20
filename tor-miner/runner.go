@@ -3,7 +3,9 @@ package miner
 import (
 	"context"
 	"encoding/base32"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	net_url "net/url"
 	"os"
@@ -15,11 +17,14 @@ import (
 )
 
 const (
-	DefaultMinerPath  = "xmrig"
-	TorProxyAddr      = "127.0.0.1:9050"
-	TorStartupTimeout = time.Minute
-	DefaultAPIAddr    = "127.0.0.1:3638"
+	DefaultMinerPath   = "xmrig"
+	TorProxyAddr       = "127.0.0.1:9050"
+	TorStartupTimeout  = time.Minute
+	DefaultAPIAddr     = "127.0.0.1:3638"
 )
+
+var UsageError = errors.New(
+	"usage: tor-miner [CONFIG_PASSPHRASE] [XMRIG_ARGS...]")
 
 var httpAPI = regexp.MustCompile(`HTTP API\s+(\S+:\d+)\n`)
 
@@ -36,24 +41,26 @@ type Runner struct {
 }
 
 func (r *Runner) Run(ctx context.Context) error {
-	if len(os.Args) < 2 {
-		return panique("invocation error")
+	password, err := configPassword()
+	if err != nil {
+		return err
 	}
 	if r.isStarted {
 		return panique("already started")
 	}
 	r.isStarted = true
 
-	config, err := DefaultConfig(os.Args[1])
+	config, err := DefaultConfig(password)
 	if err != nil {
 		return err
 	}
+	password = ""
 
 	if r.MinerPath == "" {
 		r.MinerPath = DefaultMinerPath
 	}
 	if r.MinerArgs == nil {
-		r.MinerArgs = os.Args[2:]
+		r.MinerArgs = os.Args[1:]
 	}
 	if r.LocalAPI.URL == "" {
 		r.LocalAPI.URL = "http://" + DefaultAPIAddr
@@ -177,6 +184,29 @@ func (r *Runner) Run(ctx context.Context) error {
 		cmds = append(cmds, r.tor)
 	}
 	return monitor(cmds, &r.LocalAPI, r.onionAPI, &config.Monitor)
+}
+
+func configPassword() (string, error) {
+	if len(os.Args) < 2 || strings.HasPrefix(os.Args[1], "-") {
+		for _, filename := range []string{
+			"/run/secrets/tor_miner_config_passphrase",
+			"/etc/tor-miner/config_passphrase",
+		} {
+			bytes, err := os.ReadFile(filename)
+			if err == nil {
+				return strings.TrimSpace(string(bytes)), nil
+			} else if !errors.Is(err, fs.ErrNotExist) {
+				return "", err
+			}
+			msg, _ := strings.CutPrefix(err.Error(), "open ")
+			fmt.Println("tor-miner:", msg)
+		}
+
+		return "", UsageError
+	}
+	password := os.Args[1]
+	os.Args = append(os.Args[:1], os.Args[2:]...)
+	return password, nil
 }
 
 func (r *Runner) dryRun(ctx context.Context) (string, error) {
