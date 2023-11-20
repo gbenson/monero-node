@@ -16,17 +16,18 @@ apt-get update
 #apt-get upgrade -y
 apt-get install -y docker.io
 
-cat <<EOF >/lib/systemd/system/xmrig.service
+service=xmrig
+cat <<EOF >/lib/systemd/system/$service.service
 [Unit]
 Description=XMRig Monero miner
-Documentation=https://github.com/gbenson/monero-node
+Documentation=https://github.com/gbenson/monero-node/
 Requires=docker.service
 After=docker.service
 
 [Service]
 Type=simple
-ExecStart=docker run --privileged --pull=always --rm --name=xmrig gbenson/xmrig
-ExecStop=docker stop xmrig
+ExecStart=docker run --privileged --pull=always --rm --name=$service gbenson/$service
+ExecStop=docker stop $service
 Restart=always
 RestartSec=30s
 
@@ -35,6 +36,6 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable xmrig
+systemctl enable $service
 
 reboot
