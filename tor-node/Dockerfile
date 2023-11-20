@@ -5,7 +5,9 @@ RUN set -eux \
   && apt-get -y upgrade \
   && apt-get -y install tor \
   && apt-get -y clean \
-  && rm -rf /var/lib/apt
+  && rm -rf /var/lib/apt /var/cache/apt/archives \
+  && rm -f /var/cache/ldconfig/aux-cache \
+  && for i in /run/*; do [ "$i" = "/run/lock" ] || rm -rf "$i"; done
 
 FROM base as builder
 COPY entrypoint.sh /
