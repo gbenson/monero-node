@@ -17,6 +17,10 @@ apt-get update
 apt-get install -y docker.io
 
 service=xmrig
+secret_name=config_passphrase
+secret_src=/etc/tor-miner/$secret_name
+secret_dst=/run/secrets/tor_miner_${secret_name}
+
 cat <<EOF >/lib/systemd/system/$service.service
 [Unit]
 Description=XMRig Monero miner
@@ -26,7 +30,14 @@ After=docker.service
 
 [Service]
 Type=simple
-ExecStart=docker run --privileged --pull=always --rm --name=$service gbenson/$service
+ExecStart=docker run \\
+    --privileged \\
+    --pull=always \\
+    --rm \\
+    --name=$service \\
+    --mount type=tmpfs,target=/run \\
+    --mount type=bind,source=$secret_src,target=$secret_dst,readonly \\
+    gbenson/$service
 ExecStop=docker stop $service
 Restart=always
 RestartSec=30s
