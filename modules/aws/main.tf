@@ -39,7 +39,10 @@ resource "aws_lambda_function" "status_listener" {
   s3_key    = aws_s3_object.lambda_listener_zip.key
 
   runtime = "python3.9"
-  layers = [var.aws_lambda_python_powertools_layer_arn]
+  layers = [
+    var.aws_lambda_python_powertools_layer_arn,
+    "arn:aws:lambda:us-east-1:919648353655:layer:python39-requests2_31_0:2",
+  ]
   handler = "lambda_function.lambda_handler"
 
   source_code_hash = data.archive_file.lambda_listener_zip.output_base64sha256

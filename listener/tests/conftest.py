@@ -14,3 +14,8 @@ def load_json(filename):
 @pytest.fixture
 def startup_event_1():
     return load_json("startup-event-1.json")
+
+
+@pytest.fixture
+def startup_event_3():
+    return load_json("startup-event-2.json")
