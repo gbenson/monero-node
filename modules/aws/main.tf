@@ -39,6 +39,7 @@ resource "aws_lambda_function" "status_listener" {
   s3_key    = aws_s3_object.lambda_listener_zip.key
 
   runtime = "python3.9"
+  layers = [var.aws_lambda_python_powertools_layer_arn]
   handler = "lambda_function.lambda_handler"
 
   source_code_hash = data.archive_file.lambda_listener_zip.output_base64sha256
@@ -72,6 +73,11 @@ resource "aws_iam_role" "lambda_exec" {
 resource "aws_iam_role_policy_attachment" "lambda_policy" {
   role       = aws_iam_role.lambda_exec.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_graphite_secret_read" {
+  role       = aws_iam_role.lambda_exec.name
+  policy_arn = aws_iam_policy.graphite_secret_read.arn
 }
 
 resource "aws_apigatewayv2_api" "lambda" {

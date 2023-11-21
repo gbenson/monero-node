@@ -1,9 +1,14 @@
 [project]
 name = "xmrig-status-listener"
 version = "0.0.0"
+dependencies = [
+    "boto3",
+]
 
 [project.optional-dependencies]
 dev = [
+    "aws-lambda-powertools[all]",
+    "flake8",
     "pytest",
 ]
 
