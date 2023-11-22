@@ -67,9 +67,9 @@ class Event:
         })
 
     SUFFIXES = {
-        "miner.hashrate.total": ("_10s", "_1m", "_15m"),
-        "miner.hugepages": (".got", ".want"),
-        "miner.resources.load_average": ("_1m", "_5m", "_15m"),
+        "miner.hashrate.total": ("10s", "1m", "15m"),
+        "miner.hugepages": ("got", "want"),
+        "miner.resources.load_average": ("1m", "5m", "15m"),
     }
 
     @classmethod
@@ -107,7 +107,7 @@ class Event:
                     if value is None:
                         continue
                     metric = base.copy()
-                    metric["name"] += suffix
+                    metric["name"] = f"{name}.{suffix}"
                     metric["value"] = value
                     dst.append(metric)
                 continue
