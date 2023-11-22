@@ -56,6 +56,25 @@ resource "aws_cloudwatch_log_group" "status_listener" {
   retention_in_days = 30
 }
 
+resource "aws_secretsmanager_secret" "status_listener" {
+  name = aws_lambda_function.status_listener.function_name
+}
+
+resource "aws_iam_policy" "status_listener_secret_read" {
+  name = "XMRigStatusListenerSecret"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+	Effect = "Allow",
+	Action = "secretsmanager:GetSecretValue",
+	Resource = aws_secretsmanager_secret.status_listener.arn
+      },
+    ],
+  })
+}
+
 resource "aws_iam_role" "lambda_exec" {
   name = "XMRigStatusListenerLambda"
 
@@ -78,9 +97,9 @@ resource "aws_iam_role_policy_attachment" "lambda_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-resource "aws_iam_role_policy_attachment" "lambda_graphite_secret_read" {
+resource "aws_iam_role_policy_attachment" "secret_policy" {
   role       = aws_iam_role.lambda_exec.name
-  policy_arn = aws_iam_policy.graphite_secret_read.arn
+  policy_arn = aws_iam_policy.status_listener_secret_read.arn
 }
 
 resource "aws_apigatewayv2_api" "lambda" {

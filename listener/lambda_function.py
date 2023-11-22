@@ -1,6 +1,9 @@
 import json
 import logging
+import os
 import re
+
+from functools import cached_property
 
 import requests
 
@@ -13,9 +16,6 @@ DOCKER_WORKER_ID = re.compile(r"^[0-9a-f]{12}$")
 
 
 class Handler:
-    def __init__(self):
-        self.graphite_api = json.loads(parameters.get_secret("graphite_api"))
-
     def __call__(self, event, context):
         return self.handle(Event(event))
 
@@ -25,10 +25,10 @@ class Handler:
             return NO_CONTENT
 
         response = requests.post(
-            f"{self.graphite_api['url']}/metrics",
+            f"{self.config['graphite_api_url']}/metrics",
             headers = {
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.graphite_api['access_token']}",
+                "Authorization": f"Bearer {self.config['graphite_access_token']}",
             },
             data = json_dumps(event.metrics),
         )
@@ -40,6 +40,14 @@ class Handler:
             },
             "body": json_dumps(response.json()),
         }
+
+    @cached_property
+    def function_name(self):
+        return os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+
+    @cached_property
+    def config(self):
+        return json.loads(parameters.get_secret(self.function_name))
 
 
 class Event:
