@@ -1,7 +1,6 @@
 package miner
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	net_url "net/url"
@@ -23,7 +22,7 @@ func (api *APIEndpoint) Get(route string) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	return api.Do(req)
+	return httpClient.Do(req)
 }
 
 // Analogue of http.Client.Post
@@ -35,7 +34,7 @@ func (api *APIEndpoint) Post(route, contentType string,
 		return nil, err
 	}
 	req.Header.Set("Content-Type", contentType)
-	return api.Do(req)
+	return httpClient.Do(req)
 }
 
 // Analogue of http.NewRequest
@@ -57,10 +56,4 @@ func (api *APIEndpoint) NewRequest(
 		req.Header.Set("Authorization", "Bearer "+api.AccessToken)
 	}
 	return req, err
-}
-
-// Analogue of http.Client.Do
-func (api *APIEndpoint) Do(req *http.Request) (*http.Response, error) {
-	fmt.Printf("tor-miner: %s %s\n", req.Method, req.URL)
-	return httpClient.Do(req)
 }
