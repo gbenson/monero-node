@@ -3,6 +3,7 @@ name = "xmrig-status-listener"
 version = "0.0.0"
 dependencies = [
     "boto3",
+    "requests",
 ]
 
 [project.optional-dependencies]
