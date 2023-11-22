@@ -86,6 +86,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.MinerArgs = append(opt, r.MinerArgs...)
 	}
 
+	// Specify machine-specific tuning options
+	if strings.Contains(out, " i7-1255U ") {
+		opts := []string{"-t", "8", "--cpu-affinity=3727"}
+		r.MinerArgs = append(r.MinerArgs, opts...)
+	}
+
 	// Discover or configure our HTTP API details
 	m := httpAPI.FindStringSubmatch(out)
 	apiConfigured := len(m) > 1
