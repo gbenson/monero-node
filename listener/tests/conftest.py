@@ -1,9 +1,30 @@
 import json
+import logging
 import os
 
 import pytest
 
+from lambda_function import LambdaHandler
+
 TESTDIR = os.path.dirname(__file__)
+
+
+class FailOnLog:
+    def __init__(self, caplog, func, level=logging.WARNING):
+        self.func = func
+        self.caplog = caplog
+        self.level = level
+
+    def __call__(self, *args, **kwargs):
+        with self.caplog.at_level(self.level):
+            result = self.func(*args, **kwargs)
+        assert not self.caplog.records
+        return result
+
+
+@pytest.fixture
+def lambda_handler(caplog):
+    yield FailOnLog(caplog, LambdaHandler())
 
 
 def load_json(filename):
