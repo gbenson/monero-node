@@ -17,13 +17,17 @@ DOCKER_WORKER_ID = re.compile(r"^[0-9a-f]{12}$")
 
 class Handler:
     def __call__(self, event, context):
-        return self.handle(Event(event))
+        try:
+            result = self.handle(Event(event))
+            if result is not None:
+                return result
+
+        except Exception as e:
+            logger.error(json_dumps(event), exc_info=e)
+
+        return NO_CONTENT
 
     def handle(self, event):
-        if not hasattr(event, "miner_status"):
-            logger.warning(json_dumps(event))
-            return NO_CONTENT
-
         response = requests.post(
             f"{self.config['graphite_api_url']}/metrics",
             headers = {
