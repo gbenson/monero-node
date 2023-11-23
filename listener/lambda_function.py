@@ -3,7 +3,10 @@ import logging
 import os
 import re
 
+from abc import ABC, abstractmethod
+from base64 import b64encode
 from functools import cached_property
+from ipaddress import ip_address, ip_network
 
 import requests
 
@@ -12,38 +15,198 @@ from aws_lambda_powertools.utilities import parameters
 logger = logging.getLogger()
 
 NO_CONTENT = {"statusCode": 204}
-DOCKER_WORKER_ID = re.compile(r"^[0-9a-f]{12}$")
 
 
-class Handler:
-    def __call__(self, event, context):
+class EventHandler(ABC):
+    def __init__(self, config):
+        self.config = config
+        self._used_up = False
+        self.receive_exception = None
+
+    def _handle(self, event):
+        assert not self._used_up
+        self._used_up = True
         try:
-            result = self.handle(Event(event))
-            if result is not None:
-                return result
+            response = self.receive(event)
+            if response is not None:
+                return response
 
-        except Exception as e:
-            logger.error(json_dumps(event), exc_info=e)
+        except Exception as exc:
+            self.receive_exception = exc
+            try:
+                response = self.handle_event()
+            finally:
+                self.receive_exception = None
+            logger.error(json_dumps(event.event), exc_info=exc)
+            return response
+        return self.handle_event()
 
-        return NO_CONTENT
+    @abstractmethod
+    def receive(self, event):
+        raise NotImplementedError
 
-    def handle(self, event):
+    @abstractmethod
+    def handle_event(self):
+        raise NotImplementedError
+
+
+class MetricsRecorder(EventHandler):
+    """Upload metrics to Grafana."""
+
+    def receive(self, event):
+        if event.worker_id is None:
+            return NO_CONTENT
+
+        template = {
+            "time": event.unixtime_ms // 1000,
+            "interval": 10,
+            "tags": (
+                f"miner={event.worker_id}",
+            ),
+        }
+        self.metrics = list(self._receive(
+            template,
+            event.miner_status,
+        ))
+
+    @classmethod
+    def _receive(cls, template, metrics):
+        for key, value in metrics.items():
+            if isinstance(value, bool):
+                value = int(value)
+            if not isinstance(value, (int, float)):
+                continue
+            metric = template.copy()
+            metric["name"] = f"miner.{key}"
+            metric["value"] = value
+            yield metric
+
+    @property
+    def api_url(self):
+        return self.config["graphite_api_url"]
+
+    @property
+    def access_token(self):
+        return self.config["graphite_access_token"]
+
+    def handle_event(self):
         response = requests.post(
-            f"{self.config['graphite_api_url']}/metrics",
-            headers = {
+            f"{self.api_url}/metrics",
+            headers = {  # noqa: E251
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.config['graphite_access_token']}",
+                "Authorization": f"Bearer {self.access_token}",
             },
-            data = json_dumps(event.metrics),
+            data = json_dumps(self.metrics),  # noqa: E251
         )
 
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Content-Type": "application/json"
-            },
-            "body": json_dumps(response.json()),
-        }
+        try:
+            if response.json()["published"] == len(self.metrics):
+                return NO_CONTENT
+        except Exception:
+            pass
+
+        log_unhandled_response(response)
+        return NO_CONTENT
+
+
+class Event:
+    def __init__(self, event, config):
+        self.config = config
+        self.event = event
+
+    @cached_property
+    def request_context(self):
+        return self.event["requestContext"]
+
+    @cached_property
+    def source_ip(self):
+        return self.request_context["identity"]["sourceIp"]
+
+    @cached_property
+    def unixtime_ms(self):
+        return self.request_context["requestTimeEpoch"]
+
+    @cached_property
+    def body(self):
+        return json.loads(self.event["body"])
+
+    @cached_property
+    def worker_id(self):
+        miner_status = self.body.get("miner_status")
+        if miner_status is None:
+            return None
+
+        worker_id = miner_status.get("worker_id")
+        if worker_id is not None and not in_container_hostname(worker_id):
+            return worker_id
+
+        worker_id = self.source_ip
+        if ip_address(worker_id) not in self.config.home_network:
+            return worker_id
+
+        for word in self.miner_status["cpu.brand"].split():
+            name = self.config.home_hostnames_by_cpu.get(word)
+            if name is not None:
+                return name
+
+        return worker_id
+
+    @cached_property
+    def miner_status(self):
+        return dict(self._flatten(self.body["miner_status"]))
+
+    LIST_SUFFIXES = {
+        "hashrate.total": ("10s", "1m", "15m"),
+        "hugepages": ("got", "want"),
+        "resources.load_average": ("1m", "5m", "15m"),
+    }
+
+    def _flatten(cls, d, prefix=""):
+        if prefix:
+            prefix += "."
+        for key, value in d.items():
+            key = f"{prefix}{key}"
+            if isinstance(value, dict):
+                for item in cls._flatten(value, key):
+                    yield item
+                continue
+
+            if isinstance(value, list):
+                suffixes = cls.LIST_SUFFIXES.get(key)
+                if suffixes is not None:
+                    for suffix, value in zip(suffixes, value):
+                        yield f"{key}.{suffix}", value
+                    continue
+
+            yield key, value
+
+
+class LambdaHandler:
+    EVENT_HANDLERS = (
+        MetricsRecorder,
+    )
+
+    def __call__(self, event, context):
+        try:
+            return self._handle(Event(event, self))
+        except Exception as exc:
+            logger.error(json_dumps(event), exc_info=exc)
+        return NO_CONTENT
+
+    def _handle(self, event):
+        responses = []
+        for handlerclass in self.EVENT_HANDLERS:
+            handler = handlerclass(self.config)
+            try:
+                responses.append(handler._handle(event))
+            except Exception as exc:
+                logger.error(json_dumps(event.event), exc_info=exc)
+        responses = [r for r in responses if r is not NO_CONTENT]
+        if not responses:
+            return NO_CONTENT
+        if len(responses) == 1:
+            return responses[0]
+        return lambda_response(200, {"responses": responses})
 
     @cached_property
     def function_name(self):
@@ -53,102 +216,79 @@ class Handler:
     def config(self):
         return json.loads(parameters.get_secret(self.function_name))
 
+    @cached_property
+    def home_network(self):
+        return ip_network(self.config["home_network"])
 
-class Event:
-    __slots__ = "context", "error", "miner_api", "miner_status"
-
-    def __init__(self, src):
-        for attr, value in json.loads(src["body"]).items():
-            setattr(self, attr, value)
-        self.context = EventContext(src["requestContext"])
-
-    @property
-    def worker_id(self):
-        worker_id = self.miner_status["worker_id"]
-        if DOCKER_WORKER_ID.match(worker_id) is None:
-            return worker_id
-        return self.context.source_ip
-
-    @property
-    def metrics(self):
-        return self._descend_metrics(self.miner_status, {
-                "name": "miner",
-                "interval": 10,
-                "time": self.context.unixtime_ms // 1000,
-                "tags": [f"miner={self.worker_id}"],
-        })
-
-    SUFFIXES = {
-        "miner.hashrate.total": ("10s", "1m", "15m"),
-        "miner.hugepages": ("got", "want"),
-        "miner.resources.load_average": ("1m", "5m", "15m"),
-    }
-
-    @classmethod
-    def _descend_metrics(cls, src, base, dst=None):
-        if dst is None:
-            dst = []
-        for name, value in src.items():
-            if value is None:
-                continue
-            if isinstance(value, (str, bool)):
-                continue
-
-            name = f"{base['name']}.{name}"
-            if hasattr(value, "items"):
-                child = base.copy()
-                child["name"] = name
-                cls._descend_metrics(value, child, dst)
-                continue
-
-            if not isinstance(value, list):
-                metric = base.copy()
-                metric["name"] = name
-                metric["value"] = value
-                dst.append(metric)
-                continue
-
-            if not value:
-                continue
-            if isinstance(value[0], str):
-                continue
-
-            suffixes = cls.SUFFIXES.get(name)
-            if suffixes is not None:
-                for suffix, value in zip(suffixes, value):
-                    if value is None:
-                        continue
-                    metric = base.copy()
-                    metric["name"] = f"{name}.{suffix}"
-                    metric["value"] = value
-                    dst.append(metric)
-                continue
-
-            if name != "miner.results.best":
-                logger.warning("%s?", name)
-                continue
-
-        return dst
+    @cached_property
+    def home_hostnames_by_cpu(self):
+        return json.loads(self.config["home_hostnames_by_cpu"])
 
 
-class EventContext:
-    def __init__(self, src):
-        self.source_ip = src["identity"]["sourceIp"]
-        self.unixtime_ms = src["requestTimeEpoch"]
+def in_container_hostname(s):
+    """Return `True` if `s` could be the hostname in a container.
+    """
+    return re.match(r"^[0-9a-f]{12}$", s) is not None
 
 
 def as_dict(obj):
-    """JSON serialization helper"""
+    """JSON serialization helper.
+    """
     d = getattr(obj, "__dict__", None)
     if d is not None:
         return d
-    return dict((attr, getattr(obj, attr))
-                for attr in obj.__slots__
-                if hasattr(obj, attr))
+    slots = getattr(obj, "__slots__", None)
+    if slots is not None:
+        return dict((attr, getattr(obj, attr))
+                    for attr in obj.__slots__
+                    if hasattr(obj, attr))
+    if isinstance(obj, bytes):
+        try:
+            return obj.decode("utf-8")
+        except Exception:
+            pass
+    logger.warning("%s: serializing with repr()", obj)
+    return repr(obj)
 
 
 def json_dumps(obj, separators=(",", ":"), default=as_dict, **kwargs):
     return json.dumps(obj, separators=separators, default=default, **kwargs)
 
 
-lambda_handler = Handler()
+def lambda_response(http_status_code, body, content_type=None):
+    if content_type is None:
+        content_type = "application/json"
+        body = json_dumps(body)
+
+    result = {
+        "statusCode": http_status_code,
+        "headers": {
+            "Content-Type": content_type,
+        },
+    }
+
+    if isinstance(body, bytes):
+        body = b64encode(body)
+        result["isBase64Encoded"] = True
+
+    result["body"] = body
+    return result
+
+
+def log_unhandled_response(response, **kwargs):
+    if isinstance(response, requests.Response):
+        try:
+            response = lambda_response(
+                response.status_code,
+                response.json(),
+            )
+        except Exception:
+            response = lambda_response(
+                response.status_code,
+                response.content,
+                response.headers["content-type"],
+            )
+    logger.error("%s: unhandled response", json_dumps(response), **kwargs)
+
+
+lambda_handler = LambdaHandler()
