@@ -42,11 +42,11 @@ class EventHandler(ABC):
         return self.handle_event()
 
     @abstractmethod
-    def receive(self, event):
+    def receive(self, event):  # pragma: no cover
         raise NotImplementedError
 
     @abstractmethod
-    def handle_event(self):
+    def handle_event(self):  # pragma: no cover
         raise NotImplementedError
 
 

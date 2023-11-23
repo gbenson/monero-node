@@ -11,6 +11,7 @@ dev = [
     "aws-lambda-powertools[all]",
     "flake8",
     "pytest",
+    "pytest-cov",
 ]
 
 [build-system]
