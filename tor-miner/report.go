@@ -103,7 +103,7 @@ func (r *Report) Send() error {
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode != http.StatusNoContent {
 		fmt.Printf("tor-miner: %s: %s\n", res.Request.URL, res.Status)
 	}
 	return nil
