@@ -1,11 +1,11 @@
 FROM golang:bookworm as builder
 
 ARG NAME=xmrig
-ARG VERSION=6.20.0
+ARG VERSION=6.21.0
 ARG ARCH=linux-static-x64
 ARG TARBALL=$NAME-$VERSION-$ARCH.tar.gz
 ARG DOWNLOAD=https://github.com/xmrig/xmrig/releases/download
-ARG HASH=ff6e67d725ee64b4607dc6490a706dc9234c708cff814477de52d3beb781c6a1
+ARG HASH=c5dc12dbb9bb51ea8acf93d6349d5bc7fe5ee11b68d6371c1bbb098e21d0f685
 
 WORKDIR /src
 RUN curl -Lo $TARBALL $DOWNLOAD/v$VERSION/$TARBALL
