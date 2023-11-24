@@ -17,7 +17,7 @@ module "dreamcompute" {
   admin_ssh_key   = var.admin_ssh_key
 
   pool_count  = 0
-  miner_count = 2
+  miner_count = 1
 
   tor_miner_config_passphrase = var.tor_miner_config_passphrase
 }
