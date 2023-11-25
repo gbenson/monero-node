@@ -9,7 +9,8 @@ terraform {
 module "aws" {
   source = "./modules/aws"
 
-  admin_ssh_key = var.admin_ssh_key
+  admin_ip_prefix = var.admin_ip_prefix
+  admin_ssh_key   = var.admin_ssh_key
 }
 
 module "dreamcompute" {
