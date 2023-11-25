@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	DefaultMinerPath   = "xmrig"
-	TorProxyAddr       = "127.0.0.1:9050"
-	TorStartupTimeout  = time.Minute
-	DefaultAPIAddr     = "127.0.0.1:3638"
+	DefaultMinerPath  = "xmrig"
+	TorProxyAddr      = "127.0.0.1:9050"
+	TorStartupTimeout = time.Minute
+	DefaultAPIAddr    = "127.0.0.1:3638"
 )
 
 var UsageError = errors.New(
@@ -89,6 +89,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Specify machine-specific tuning options
 	if strings.Contains(out, " i7-1255U ") {
 		opts := []string{"-t", "8", "--cpu-affinity=3727"}
+		r.MinerArgs = append(r.MinerArgs, opts...)
+	} else if strings.Contains(out, " i3-10110U ") {
+		opts := []string{"-t", "4"}
 		r.MinerArgs = append(r.MinerArgs, opts...)
 	}
 
