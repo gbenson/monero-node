@@ -1,4 +1,3 @@
-import copy
 import json
 import logging
 import os
@@ -8,7 +7,6 @@ from abc import ABC, abstractmethod
 from base64 import b64encode
 from functools import cached_property
 from ipaddress import ip_address, ip_network
-from itertools import chain
 
 import requests
 
@@ -55,103 +53,20 @@ class EventHandler(ABC):
 class StatusRecorder(EventHandler):
     """Update status in Upstash Redis."""
 
-    DIRECT_FIELDS = {"error", "miner_api"}
-    TTL = 24 * 60 * 60
-    ERR_NO_STATUS = '{"message": "miner_status not supplied"}'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.error = None
-        self.miner_api = None
-        self.miner_status = None
-        self.worker_uuid = None
-        self.commands = []
-        self.in_error = False
+    EVENT_ATTRS = ("unixtime_ms", "source_ip", "worker_id")
+    REPORT_TTL = 28 * 24 * 60 * 60
 
     def receive(self, event):
-        self.unixtime = event.unixtime
-        self.source_ip = event.source_ip
-        for key, value in event.body.items():
-            func = getattr(self, f"_receive_{key}", None)
-            if func is not None:
-                func(event=event, key=key, value=value)
-                continue
-            if key in self.DIRECT_FIELDS:
-                if isinstance(value, (dict, list)) and value:
-                    value = json_dumps(value)
-                setattr(self, key, value)
-                continue
-            logger.warning("no receiver for %s", key)
+        self.report = event.body.copy()
 
-    def _receive_miner_status(self, event, value, **kwargs):
-        self.miner_status = status = copy.deepcopy(value)
-        try:
-            sep = ".onion:"
-            hostport = status["connection"]["pool"].split(sep, 1)
-            if len(hostport) > 1:
-                host = hostport[0]
-                hostport[0] = "...".join((host[:10], host[-4:]))
-                status["connection"]["pool"] = sep.join(hostport)
+        error = self.report.pop("error", None)
+        if error is not None:
+            self.report.attach_error(error)
 
-        except Exception as exc:
-            logger.error(json_dumps(event.event), exc_info=exc)
-            if self.receive_exception is None:
-                self.receive_exception = exc
-
-        status.pop("algorithms", None)
-        self.worker_uuid = status.get("id")
-
-    def handle_event(self):
-        if self.error is None and self.receive_exception is not None:
-            self.error = json_dumps(dict(message=str(self.receive_exception)))
-        self._queue_commands()
-        return self._execute()
-
-    def _queue_commands(self):
-        host = self._record("host", self.source_ip)
-        if self.worker_uuid is None:
-            if self.miner_api is not None:
-                self._set(f"{host}:miner_api", self.miner_api)
-            if self.error is None:
-                self.error = self.ERR_NO_STATUS
-            self._set(f"{host}:error", self.error)
-            return
-
-        worker = self._record("worker", self.worker_uuid)
-        if self.miner_api is not None:
-            self._set(f"{worker}:miner_api", self.miner_api)
-
-        # Link the worker to the host and vice-versa.
-        self._set(f"{host}:worker", self.worker_uuid)
-        self._set(f"{worker}:host", self.source_ip)
-
-        # Store the entire miner status verbatim.
-        self._set(f"{worker}:miner_status", json_dumps(self.miner_status))
-
-        # Set the worker in error if necessary, but not the host.
-        if self.error is not None:
-            self._set(f"{worker}:error", self.error)
-
-    def _record(self, key, value):
-        """Add `value` to a sorted set, expiring after `TTL`.
-        Returns the base key for storing information about
-        `value`.
-        """
-        cutoff_age = int(self.unixtime) - self.TTL
-        table = f"{key}s"
-        self._queue("zremrangebyscore", table, "-inf", cutoff_age)
-        self._queue("zadd", table, self.unixtime, value)
-        return f"{key}:{value}"
-
-    def _set(self, key, value, **kwargs):
-        if "ex" not in kwargs:
-            kwargs["ex"] = self.TTL
-        args = tuple(chain.from_iterable(
-            ((k.upper(), v) for k, v in kwargs.items())))
-        self._queue("set", key, value, *args)
-
-    def _queue(self, *args):
-        self.commands.append(args)
+        for attr in self.EVENT_ATTRS:
+            value = getattr(event, attr, None)
+            if value is not None:
+                self.report[attr] = value
 
     @property
     def api_url(self):
@@ -161,19 +76,36 @@ class StatusRecorder(EventHandler):
     def access_token(self):
         return self.config["upstash_redis_rest_token"]
 
-    def _execute(self):
+    def handle_event(self):
+        if self.receive_exception is not None:
+            self.attach_error({"message": str(self.receive_exception)})
+
+        try:
+            miner_status = self.report["miner_status"]
+            key = f"{miner_status['id']}-{miner_status['worker_id']}"
+            typ = "worker"
+        except Exception:
+            key, typ = self.report["source_ip"], "host"
+        key = f"{typ}:{key}"
+
+        pxat = self.unixtime_ms + self.REPORT_TTL * 1000
+        redis_commands = [
+            ["set", key, json_dumps(self.report), "PXAT", pxat],
+            ["zadd", "reports", self.unixtime, key],
+        ]
+
         response = requests.post(
             f"{self.api_url}/pipeline",
             headers = {  # noqa: E251
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.access_token}",
             },
-            data = json_dumps(self.commands),  # noqa: E251
+            data = json_dumps(redis_commands),  # noqa: E251
         )
 
         try:
             results = response.json()
-            if len(results) != len(self.commands):
+            if len(results) != len(redis_commands):
                 raise ValueError
             for result in results:
                 if result.keys() != {"result"}:
@@ -185,12 +117,25 @@ class StatusRecorder(EventHandler):
         log_unhandled_response(response)
         return NO_CONTENT
 
+    @property
+    def unixtime_ms(self):
+        return self.report["unixtime_ms"]
+
+    @property
+    def unixtime(self):
+        return self.unixtime_ms / 1000
+
+    def attach_error(self, error):
+        if "errors" not in self.report:
+            self.report["errors"] = []
+        self.report["errors"].append(error)
+
 
 class MetricsRecorder(EventHandler):
     """Upload metrics to Grafana."""
 
     def receive(self, event):
-        if not event.has_miner_status:
+        if not event.worker_id:
             return NO_CONTENT
 
         template = {
@@ -263,16 +208,8 @@ class Event:
         return self.request_context["requestTimeEpoch"]
 
     @cached_property
-    def unixtime(self):
-        return self.unixtime_ms / 1000
-
-    @cached_property
     def body(self):
         return json.loads(self.event["body"])
-
-    @cached_property
-    def has_miner_status(self):
-        return "miner_status" in self.body
 
     @cached_property
     def miner_status(self):
@@ -280,6 +217,9 @@ class Event:
 
     @cached_property
     def worker_id(self):
+        if "miner_status" not in self.body:
+            return None
+
         result = self.miner_status["worker_id"]
         if not is_in_container_hostname(result):
             return result
