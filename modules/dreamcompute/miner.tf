@@ -6,7 +6,7 @@ resource "openstack_networking_secgroup_v2" "xmrig" {
 resource "openstack_compute_instance_v2" "miner" {
   count           = var.miner_count
   name            = "miner${count.index + 1}"
-  key_pair        = openstack_compute_keypair_v2.keypair.id
+  key_pair        = openstack_compute_keypair_v2.admin_ssh_key.id
   security_groups = ["default", "xmrig"]
   flavor_name     = "gp1.lightspeed"
   image_name      = "Ubuntu-22.04"

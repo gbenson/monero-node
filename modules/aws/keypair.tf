@@ -1,4 +1,4 @@
-resource "aws_key_pair" "keypair" {
-  key_name   = "admin_ssh_key"
+resource "aws_key_pair" "admin_ssh_key" {
+  key_name   = "admin-ssh-key"
   public_key = var.admin_ssh_key
 }

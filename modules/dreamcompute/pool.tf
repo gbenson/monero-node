@@ -59,7 +59,7 @@ resource "openstack_networking_secgroup_rule_v2" "inbound_ipv4_stratum" {
 resource "openstack_compute_instance_v2" "p2pool_node" {
   count               = var.pool_count
   name                = "p2pool_node"
-  key_pair            = openstack_compute_keypair_v2.keypair.id
+  key_pair            = openstack_compute_keypair_v2.admin_ssh_key.id
   security_groups     = ["default", "monerod", "p2pool_mini"]
   flavor_name         = "gp1.warpspeed"
   image_name          = "Ubuntu-22.04"
