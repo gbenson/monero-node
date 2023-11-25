@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import socket
 
 from abc import ABC, abstractmethod
 from base64 import b64encode
@@ -226,14 +227,14 @@ class Event:
 
         result = self.source_ip
         if ip_address(result) not in self.config.home_network:
-            return result
+            return gethostbyaddr(result)
 
         for word in self.miner_status["cpu.brand"].split():
             name = self.config.home_hostnames_by_cpu.get(word)
             if name is not None:
-                return name
+                return f"{name}.nx"
 
-        return result
+        return gethostbyaddr(result)
 
     LIST_SUFFIXES = {
         "hashrate.total": ("10s", "1m", "15m"),
@@ -310,6 +311,13 @@ def is_in_container_hostname(s):
     """Return `True` if `s` could be the hostname in a container.
     """
     return re.match(r"^[0-9a-f]{12}$", s) is not None
+
+
+def gethostbyaddr(ip_address):
+    try:
+        return socket.gethostbyaddr(ip_address)[0]
+    except Exception:
+        return ip_address
 
 
 def as_dict(obj):
