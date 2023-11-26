@@ -26,5 +26,5 @@ resource "aws_instance" "miner" {
   key_name                    = aws_key_pair.admin_ssh_key.id
   associate_public_ip_address = "true"
 
-  user_data = file("${path.module}/../setup-miner.sh")
+  user_data = file("${path.module}/../../setup-miner.sh")
 }
