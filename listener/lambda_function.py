@@ -223,6 +223,8 @@ class Event:
 
         result = self.miner_status["worker_id"]
         if not is_in_container_hostname(result):
+            if result in self.config.home_hostnames_by_cpu.values():
+                return self._qualify_home_hostname(result)
             return result
 
         result = self.source_ip
@@ -232,9 +234,15 @@ class Event:
         for word in self.miner_status["cpu.brand"].split():
             name = self.config.home_hostnames_by_cpu.get(word)
             if name is not None:
-                return f"{name}.nx"
+                return self._qualify_home_hostname(name)
 
         return gethostbyaddr(result)
+
+    @classmethod
+    def _qualify_home_hostname(cls, name, suffix=".nx"):
+        if name.endswith(suffix):
+            return name
+        return f"{name}{suffix}"
 
     LIST_SUFFIXES = {
         "hashrate.total": ("10s", "1m", "15m"),
