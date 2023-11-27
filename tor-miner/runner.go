@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -90,8 +91,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	if strings.Contains(out, " i7-1255U ") {
 		opts := []string{"-t", "8", "--cpu-affinity=3727"}
 		r.MinerArgs = append(r.MinerArgs, opts...)
-	} else if strings.Contains(out, " i3-10110U ") {
-		opts := []string{"-t", "4"}
+	} else if ncpus := runtime.NumCPU(); ncpus > 1 {
+		opts := []string{"-t", fmt.Sprint(ncpus)}
 		r.MinerArgs = append(r.MinerArgs, opts...)
 	}
 
