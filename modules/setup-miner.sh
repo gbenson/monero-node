@@ -1,13 +1,13 @@
 #!/bin/bash
 
 export PS4='setup-miner.sh: '
-set -ex
+set -x
 
 if [ -f /etc/amazon-linux-release ]; then
   # Amazon Linux 2023
-  dnf install docker
+  dnf install -y docker
   systemctl enable docker
-else
+elif [ "$HOSTNAME" != penguin ]; then
   # Ubuntu 22.04
   for snap in lxd core20 snapd; do
     snap remove $snap
@@ -23,11 +23,31 @@ else
   apt-get install -y docker.io
 fi
 
-service=xmrig
-secret_name=config_passphrase
-secret_src=/etc/tor-miner/$secret_name
-secret_dst=/run/secrets/tor_miner_${secret_name}
+secret_dir=/etc/tor-miner
+secret_file=config_passphrase
+secret_src=$secret_dir/$secret_file
+secret_dst=/run/secrets/tor_miner_$secret_file
 
+if [ ! -f $secret_src ]; then
+  token=$(curl -X PUT http://169.254.169.254/latest/api/token \
+	       -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+  region=$(curl -H "X-aws-ec2-metadata-token: $token" \
+		http://169.254.169.254/latest/meta-data/placement/region)
+
+  python3 -m venv /root/venv
+  /root/venv/bin/pip install --upgrade pip
+  /root/venv/bin/pip install boto3
+
+  mkdir -p $secret_dir
+  script='import json,boto3;print(json.loads(boto3.client(service_na'
+  script="${script}me='secretsmanager',region_name='$region').get_se"
+  script="${script}cret_value(SecretId='tor-miner')['SecretString'])"
+  script="${script}['$secret_file'])"
+  /root/venv/bin/python -c "$script" > $secret_src
+  chmod 600 $secret_src
+fi
+
+service=xmrig
 cat <<EOF >/lib/systemd/system/$service.service
 [Unit]
 Description=XMRig Monero miner
@@ -56,4 +76,8 @@ EOF
 systemctl daemon-reload
 systemctl enable $service
 
-reboot
+if [ -f /etc/amazon-linux-release ]; then
+  systemctl start $service
+else
+  reboot
+fi
