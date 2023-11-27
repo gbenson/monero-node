@@ -3,7 +3,6 @@ RUN set -eux \
   \
   && apt-get -y update \
   && apt-get -y upgrade \
-  && apt-get -y install curl \
   && apt-get -y clean \
   && rm -rf /var/lib/apt /var/cache/apt/archives \
   && rm -f /var/cache/ldconfig/aux-cache \
@@ -12,24 +11,22 @@ RUN set -eux \
 FROM base as builder
 
 ARG NAME=p2pool
-ARG VERSION=v3.8
+ARG VERSION=v3.9
 ARG PACKAGE=$NAME-$VERSION
 ARG DOWNLOAD=https://github.com/SChernykh/$NAME/releases/download
+ARG SHA256SUMS=sha256sums.txt.asc
 
+RUN apt-get -y update
+RUN apt-get -y install curl gpg
+RUN curl -Lo $SHA256SUMS $DOWNLOAD/$VERSION/$SHA256SUMS
+COPY SChernykh.asc /
+RUN gpg --import SChernykh.asc
+RUN gpg --verify $SHA256SUMS
 RUN set -eux; \
   \
-  case $(uname -m) in \
-  x86_64) \
-    ARCH=linux-x64 \
-    HASH=019d62a4bb6d3cf22950e07ad9b49158e6fdadc006a7589edf077b338f0baf98 \
-    ;; \
-  aarch64) \
-    ARCH=linux-aarch64 \
-    HASH=3b233ae9e08fc2d5cd6698a1706c5869c9efa36b6db5e2752b766e29bc599f07 \
-    ;; \
-  *) exit 1 ;; \
-  esac; \
+  ARCH=linux-$(uname -m | sed s/86_//); \
   TARBALL=$PACKAGE-$ARCH.tar.gz; \
+  HASH=$(grep -A2 $TARBALL $SHA256SUMS | tail -1 | sed 's/.*\([0-9a-f]\{64\}\).*/\1/'); \
   echo "$HASH  $TARBALL" > SHA256SUMS \
   && curl -Lo $TARBALL $DOWNLOAD/$VERSION/$TARBALL \
   && sha256sum -c SHA256SUMS \
