@@ -13,6 +13,49 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
+resource "aws_iam_role" "ec2_miner" {
+  name = "EC2TorMiner"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+	Service = "ec2.amazonaws.com"
+      }
+    }
+    ]
+  })
+}
+
+resource "aws_iam_instance_profile" "miner" {
+  name = "miner"
+  role = aws_iam_role.ec2_miner.name
+}
+
+resource "aws_secretsmanager_secret" "tor_miner" {
+  name = "tor-miner"
+}
+
+resource "aws_iam_policy" "tor_miner_secret_read" {
+  name = "TorMinerSecret"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Action = "secretsmanager:GetSecretValue",
+      Resource = aws_secretsmanager_secret.tor_miner.arn
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_tor_miner_secret_read" {
+  role       = aws_iam_role.ec2_miner.name
+  policy_arn = aws_iam_policy.tor_miner_secret_read.arn
+}
+
 resource "aws_launch_template" "miner" {
   for_each = data.aws_ami.amazon_linux
   name     = "${each.value.architecture}-miner"
@@ -30,6 +73,10 @@ resource "aws_launch_template" "miner" {
 
   instance_market_options {
     market_type = "spot"
+  }
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.miner.name
   }
 
   vpc_security_group_ids = [aws_security_group.ssh_admin.id]

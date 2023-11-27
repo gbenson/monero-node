@@ -65,13 +65,11 @@ resource "aws_iam_policy" "status_listener_secret_read" {
 
   policy = jsonencode({
     Version = "2012-10-17",
-    Statement = [
-      {
-	Effect = "Allow",
-	Action = "secretsmanager:GetSecretValue",
-	Resource = aws_secretsmanager_secret.status_listener.arn
-      },
-    ],
+    Statement = [{
+      Effect = "Allow",
+      Action = "secretsmanager:GetSecretValue",
+      Resource = aws_secretsmanager_secret.status_listener.arn
+    }]
   })
 }
 
@@ -83,12 +81,10 @@ resource "aws_iam_role" "lambda_exec" {
     Statement = [{
       Action = "sts:AssumeRole"
       Effect = "Allow"
-      Sid    = ""
       Principal = {
 	Service = "lambda.amazonaws.com"
       }
-    }
-    ]
+    }]
   })
 }
 
