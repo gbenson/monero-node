@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export PS4='setup-p2pool-node.sh: '
+export PS4='setup-pool.sh: '
 set -x
 
 for snap in lxd core20 snapd; do
@@ -83,7 +83,7 @@ deb https://download.docker.com/linux/ubuntu jammy stable
 EOF
 
 apt-get update
-apt-get upgrade -y
+#apt-get upgrade -y
 apt-get install -y docker-ce docker-compose-plugin
 
 for sn in monerod p2pool; do
@@ -91,6 +91,7 @@ for sn in monerod p2pool; do
   mp=$(docker volume inspect --format "{{.Mountpoint}}" $sn)
   echo -e "LABEL=srv-$sn\t$mp\text4\tdefaults\t0 2" >> /etc/fstab
 done
+docker volume create p2pool-tor-service
 
 git -C /opt clone https://github.com/gbenson/monero-node
 
@@ -112,7 +113,7 @@ RestartSec=30s
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reload
+bash /opt/monero-node/modules/setup-miner.sh || systemctl daemon-reload
 systemctl enable p2pool
 
 # Adding users isn't necessary except to avoid numeric UIDs in top

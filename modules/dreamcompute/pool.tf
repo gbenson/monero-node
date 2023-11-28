@@ -65,6 +65,11 @@ resource "openstack_compute_instance_v2" "p2pool_node" {
   image_name          = "Ubuntu-22.04"
   user_data           = file("${path.module}/setup-pool.sh")
   stop_before_destroy = true
+
+  personality {
+    file    = "/etc/tor-miner/config_passphrase"
+    content = "${var.tor_miner_config_passphrase}\n"
+  }
 }
 
 resource "openstack_blockstorage_volume_v3" "monerod" {
@@ -75,7 +80,7 @@ resource "openstack_blockstorage_volume_v3" "monerod" {
 }
 
 resource "openstack_blockstorage_volume_v3" "p2pool" {
-  count       = var.pool_count
+  count       = var.pool_count < 1 ? 1 : var.pool_count
   name        = "p2pool"
   description = "P2Pool cache"
   size        = 1

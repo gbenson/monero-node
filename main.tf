@@ -23,7 +23,7 @@ module "dreamcompute" {
   admin_ip_prefix = var.admin_ip_prefix
   admin_ssh_key   = var.admin_ssh_key
 
-  pool_count  = 0
+  pool_count  = 1
   miner_count = 0
 
   tor_miner_config_passphrase = var.tor_miner_config_passphrase
