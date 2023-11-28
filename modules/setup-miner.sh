@@ -3,11 +3,13 @@
 export PS4='setup-miner.sh: '
 set -x
 
-if [ -f /etc/amazon-linux-release ]; then
+if [ -f /lib/systemd/system/p2pool.service ]; then
+  : # called from setup-pool.sh
+elif [ -f /etc/amazon-linux-release ]; then
   # Amazon Linux 2023
   dnf install -y docker
   systemctl enable docker
-elif [ "$HOSTNAME" != penguin ]; then
+elif grep -q Ubuntu /etc/lsb-release 2>/dev/null; then
   # Ubuntu 22.04
   for snap in lxd core20 snapd; do
     snap remove $snap
@@ -76,7 +78,9 @@ EOF
 systemctl daemon-reload
 systemctl enable $service
 
-if [ -f /etc/amazon-linux-release ]; then
+if [ -f /lib/systemd/system/p2pool.service ]; then
+  : # called from setup-pool.sh
+elif [ -f /etc/amazon-linux-release ]; then
   systemctl start $service
 else
   reboot
