@@ -90,7 +90,7 @@ class Report:
 
     @property
     def summary(self):
-        return f"{self.worker_id:>34s}  {self.hashrate_summary}"
+        return f"{self.worker_id:>50s}  {self.hashrate_summary}"
 
     @property
     def hashrate_summary(self):
