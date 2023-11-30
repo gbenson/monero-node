@@ -102,7 +102,8 @@ class Report:
 
     @property
     def hashrate_10s(self):
-        return self.hashrate["total"][0]
+        result = self.hashrate["total"][0]
+        return 0 if result is None else result
 
     @property
     def hashrate_max(self):
