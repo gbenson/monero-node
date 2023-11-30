@@ -61,6 +61,8 @@ resource "aws_launch_template" "miner" {
   name     = "${each.value.architecture}-miner"
   image_id = each.value.id
 
+  update_default_version = true
+
   instance_requirements {
     vcpu_count {
       min = 1
@@ -90,7 +92,7 @@ resource "aws_instance" "miner" {
   launch_template  {
     id = aws_launch_template.miner["x86_64"].id
   }
-  associate_public_ip_address = "true"
+  associate_public_ip_address = true
 
   instance_market_options {
     spot_options {
