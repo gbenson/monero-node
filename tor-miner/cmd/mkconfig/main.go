@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"regexp"
 
 	"gbenson.net/tor-miner"
 )
@@ -16,14 +17,18 @@ func main() {
 }
 
 func _main() error {
-	if len(os.Args) != 4 {
-		fmt.Println("usage: mkconfig PASSPHRASE POOL_URL MONITOR_URL")
+	if len(os.Args) != 6 {
+		fmt.Println(
+			"usage: mkconfig PASSPHRASE POOL_URL MONITOR_URL " +
+				"RESOLVER_URL RESOLVER_RESPONSE_PARSER")
 		os.Exit(2)
 	}
 
 	passphrase := os.Args[1]
 	poolURL := os.Args[2]
 	monitorURL := os.Args[3]
+	resolverURL := os.Args[4]
+	rRespParser := os.Args[5]
 
 	config := miner.Config{
 		Pool: miner.APIEndpoint{
@@ -31,6 +36,10 @@ func _main() error {
 		},
 		Monitor: miner.APIEndpoint{
 			URL: monitorURL,
+		},
+		Resolver: miner.Resolver{
+			URL:            resolverURL,
+			ResponseParser: regexp.MustCompile(rRespParser),
 		},
 	}
 

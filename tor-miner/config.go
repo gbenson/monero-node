@@ -20,8 +20,9 @@ const (
 var sealedDefaultConfig []byte
 
 type Config struct {
-	Pool    APIEndpoint `json:"pool"`
-	Monitor APIEndpoint `json:"monitor"`
+	Pool     APIEndpoint `json:"default_pool"`
+	Monitor  APIEndpoint `json:"monitor"`
+	Resolver Resolver    `json:"resolver,omitempty"`
 }
 
 func DefaultConfig(password string) (*Config, error) {
