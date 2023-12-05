@@ -15,6 +15,7 @@ type Monitor struct {
 	localAPI *APIEndpoint
 	onionAPI *APIEndpoint
 	receiver *APIEndpoint
+	hostInfo *InstanceMetadata
 }
 
 func monitor(cmds []*exec.Cmd,
@@ -25,6 +26,7 @@ func monitor(cmds []*exec.Cmd,
 		localAPI: localAPI,
 		onionAPI: onionAPI,
 		receiver: receiver,
+		hostInfo: GetInstanceMetadata(),
 	}
 
 	time.Sleep(1 * time.Second)
@@ -40,6 +42,7 @@ func monitor(cmds []*exec.Cmd,
 func (m *Monitor) mainLoop() error {
 	r := Report{
 		receiver: m.receiver,
+		HostInfo: m.hostInfo,
 		MinerAPI: m.onionAPI,
 	}
 

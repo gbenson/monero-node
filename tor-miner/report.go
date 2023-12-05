@@ -11,6 +11,7 @@ import (
 
 type Report struct {
 	receiver    *APIEndpoint
+	HostInfo    any          `json:"miner_host,omitempty"`
 	MinerStatus any          `json:"miner_status,omitempty"`
 	MinerAPI    *APIEndpoint `json:"miner_api,omitempty"`
 	Error       any          `json:"error,omitempty"`

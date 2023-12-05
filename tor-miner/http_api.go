@@ -13,6 +13,7 @@ var httpClient = http.Client{Timeout: 30 * time.Second}
 type APIEndpoint struct {
 	URL         string `json:"url"`
 	AccessToken string `json:"access_token,omitempty"`
+	AuthStyle   *Authenticator
 }
 
 // Analogue of http.Client.Get
@@ -22,6 +23,8 @@ func (api *APIEndpoint) Get(route string) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	api.Authenticate(req)
 	return httpClient.Do(req)
 }
 
@@ -34,6 +37,8 @@ func (api *APIEndpoint) Post(route, contentType string,
 		return nil, err
 	}
 	req.Header.Set("Content-Type", contentType)
+
+	api.Authenticate(req)
 	return httpClient.Do(req)
 }
 
@@ -48,12 +53,14 @@ func (api *APIEndpoint) NewRequest(
 	}
 	url = url.JoinPath(strings.TrimLeft(route, "/"))
 
-	req, err := http.NewRequest(method, url.String(), body)
-	if err != nil {
-		return nil, err
+	return http.NewRequest(method, url.String(), body)
+}
+
+// Authenticate the request if necessary
+func (api *APIEndpoint) Authenticate(req *http.Request) {
+	as := api.AuthStyle
+	if as == nil {
+		as = AuthStyleBearer
 	}
-	if api.AccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+api.AccessToken)
-	}
-	return req, err
+	as.Authenticate(req, api.AccessToken)
 }
