@@ -3,16 +3,24 @@ package exporter
 import (
 	"fmt"
 	"log"
+	"net"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 )
 
 const (
 	DefaultNetworkID = "monero-node_default"
+
+	UnknownHost  = "unknown"
+	ExternalHost = "internet"
+	LocalMiner   = "local-miner"
+
+	StratumPort = 3333
 )
 
 type Exporter struct {
@@ -21,6 +29,8 @@ type Exporter struct {
 	DockerNetwork   *DockerNetwork
 	NetworkDevice   string
 	PacketSource    *PacketSource
+
+	knownHosts map[string]string
 }
 
 func (e *Exporter) Run(ctx Context) error {
@@ -136,5 +146,141 @@ func (e *Exporter) handlePackets(ctx Context, ps *PacketSource) error {
 }
 
 func (e *Exporter) Handle(ctx Context, packet Packet) error {
-	return fmt.Errorf("not implemented")
+	layer := packet.Layer(layers.LayerTypeIPv4)
+	if layer == nil {
+		return nil
+	}
+	ip, ok := layer.(*layers.IPv4)
+	if !ok {
+		log.Printf("gopacket error")
+		return UnhandledPacketError(packet)
+	}
+
+	layer = packet.Layer(layers.LayerTypeTCP)
+	if layer == nil {
+		return nil
+	}
+	tcp, ok := layer.(*layers.TCP)
+	if !ok {
+		log.Printf("gopacket error")
+		return UnhandledPacketError(packet)
+	}
+
+	src, err := e.Categorize(ctx, ip.SrcIP, tcp.SrcPort, tcp.DstPort)
+	if err != nil {
+		return err
+	}
+	dst, err := e.Categorize(ctx, ip.DstIP, tcp.DstPort, tcp.SrcPort)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s:%d => %s:%d\n", src, tcp.SrcPort, dst, tcp.DstPort)
+
+	return nil // fmt.Errorf("not implemented")
+}
+
+func (e *Exporter) Categorize(ctx Context, ip net.IP,
+	port, peerPort layers.TCPPort) (string, error) {
+
+	result, err := e.categorize(ctx, ip, port, peerPort)
+	if err == nil && result == LocalMiner &&
+		port != StratumPort && peerPort != StratumPort {
+		err = UnhandledAddressError(ip)
+	}
+	if err != nil && result != "" {
+		log.Println("warning:", err)
+		err = nil
+	}
+	return result, err
+}
+
+func (e *Exporter) categorize(ctx Context, ip net.IP,
+	port, peerPort layers.TCPPort) (string, error) {
+
+	if !ip.IsPrivate() {
+		if ip.IsGlobalUnicast() {
+			return ExternalHost, nil
+		}
+		return "", UnhandledAddressError(ip)
+	}
+
+	wantCacheKey, err := knownHostsKey(ip)
+	if err != nil {
+		return "", err
+	}
+
+	result, found := e.knownHosts[wantCacheKey]
+	if found {
+		return result, nil
+	}
+
+	log.Printf("%s: unknown host", ip)
+	log.Println("scanning Docker network")
+
+	network, err := e.dockerNetwork(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	for _, endpoint := range network.Containers {
+		if endpoint.IPv4Address == "" {
+			continue
+		}
+
+		gotIP, _, err := net.ParseCIDR(endpoint.IPv4Address)
+		if err != nil {
+			log.Println("warning:", err)
+			continue
+		}
+
+		gotCacheKey, err := knownHostsKey(gotIP)
+		if err != nil {
+			log.Println("warning:", err)
+			continue
+		}
+
+		e.knowHost(gotCacheKey, endpoint.Name)
+
+		if gotCacheKey == wantCacheKey {
+			result = endpoint.Name
+		}
+	}
+
+	if result != "" {
+		return result, nil
+	}
+	log.Printf("%s: not found in %s", ip, network.Name)
+
+	if peerPort == StratumPort {
+		log.Printf("%s: assuming to be local miner", ip)
+		result = LocalMiner
+		e.knowHost(wantCacheKey, result)
+
+		return result, nil
+	}
+
+	return UnknownHost, UnhandledAddressError(ip)
+}
+
+func knownHostsKey(ip net.IP) (string, error) {
+	bytes := ip.To4()
+	if bytes == nil {
+		return "", UnhandledAddressError(ip)
+	}
+	return string(bytes), nil
+}
+
+func (e *Exporter) knowHost(key, value string) {
+	cachedValue, found := e.knownHosts[key]
+	if found && cachedValue == value {
+		return
+	}
+
+	if e.knownHosts == nil {
+		e.knownHosts = make(map[string]string)
+	}
+
+	e.knownHosts[key] = value
+	log.Printf("%s => %q", net.IP(key), value)
 }
