@@ -118,10 +118,16 @@ func (e *Exporter) dockerClient(ctx Context) (*DockerClient, error) {
 
 func (e *Exporter) handlePackets(ctx Context, ps *PacketSource) error {
 	for {
+		err := ctx.Err()
+		if err != nil {
+			return err
+		}
+
 		packet, err := ps.NextPacket()
 		if err != nil {
 			return err
 		}
+
 		err = e.Handle(ctx, packet)
 		if err != nil {
 			return err
