@@ -1,5 +1,25 @@
+variable "miner_architectures" {
+  description = "AWS architecture details"
+  type        = map(any)
+
+  default = {
+    arm64 = {
+      excluded_instance_types = [
+	"m6g.medium",
+	"m6gd.medium",
+      ]
+    },
+    x86_64 = {
+      excluded_instance_types = [
+	"i3.large",
+	"m7a.medium",
+      ]
+    }
+  }
+}
+
 data "aws_ami" "amazon_linux" {
-  for_each = toset(["x86_64", "arm64"])
+  for_each = var.miner_architectures
 
   most_recent = true
   owners      = ["amazon"]
@@ -57,9 +77,9 @@ resource "aws_iam_role_policy_attachment" "ec2_tor_miner_secret_read" {
 }
 
 resource "aws_launch_template" "miner" {
-  for_each = data.aws_ami.amazon_linux
-  name     = "${each.value.architecture}-miner"
-  image_id = each.value.id
+  for_each = var.miner_architectures
+  name     = "${each.key}-miner"
+  image_id = data.aws_ami.amazon_linux[each.key].id
 
   update_default_version = true
 
@@ -71,6 +91,7 @@ resource "aws_launch_template" "miner" {
       min = "4096"
     }
     burstable_performance = "excluded"
+    excluded_instance_types = each.value.excluded_instance_types
   }
 
   instance_market_options {
