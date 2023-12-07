@@ -15,12 +15,7 @@ import (
 
 const (
 	DefaultNetworkID = "monero-node_default"
-
-	UnknownHost  = "unknown"
-	ExternalHost = "internet"
-	LocalMiner   = "local-miner"
-
-	StratumPort = 3333
+	StratumPort      = 3333
 )
 
 type Exporter struct {
@@ -30,7 +25,7 @@ type Exporter struct {
 	NetworkDevice   string
 	PacketSource    *PacketSource
 
-	knownHosts map[string]string
+	knownHosts map[string]Host
 }
 
 func (e *Exporter) Run(ctx Context) error {
@@ -181,14 +176,14 @@ func (e *Exporter) Handle(ctx Context, packet Packet) error {
 }
 
 func (e *Exporter) Categorize(ctx Context, ip net.IP,
-	port, peerPort layers.TCPPort) (string, error) {
+	port, peerPort layers.TCPPort) (Host, error) {
 
 	result, err := e.categorize(ctx, ip, port, peerPort)
 	if err == nil && result == LocalMiner &&
 		port != StratumPort && peerPort != StratumPort {
 		err = UnhandledAddressError(ip)
 	}
-	if err != nil && result != "" {
+	if err != nil && result != NilHost {
 		log.Println("warning:", err)
 		err = nil
 	}
@@ -196,18 +191,18 @@ func (e *Exporter) Categorize(ctx Context, ip net.IP,
 }
 
 func (e *Exporter) categorize(ctx Context, ip net.IP,
-	port, peerPort layers.TCPPort) (string, error) {
+	port, peerPort layers.TCPPort) (Host, error) {
 
 	if !ip.IsPrivate() {
 		if ip.IsGlobalUnicast() {
 			return ExternalHost, nil
 		}
-		return "", UnhandledAddressError(ip)
+		return NilHost, UnhandledAddressError(ip)
 	}
 
 	wantCacheKey, err := knownHostsKey(ip)
 	if err != nil {
-		return "", err
+		return NilHost, err
 	}
 
 	result, found := e.knownHosts[wantCacheKey]
@@ -220,7 +215,7 @@ func (e *Exporter) categorize(ctx Context, ip net.IP,
 
 	network, err := e.dockerNetwork(ctx)
 	if err != nil {
-		return "", err
+		return NilHost, err
 	}
 
 	for _, endpoint := range network.Containers {
@@ -240,14 +235,20 @@ func (e *Exporter) categorize(ctx Context, ip net.IP,
 			continue
 		}
 
-		e.knowHost(gotCacheKey, endpoint.Name)
+		host, err := HostFromName(endpoint.Name)
+		if err != nil {
+			log.Println("warning:", err)
+			host = UnknownHost
+		}
+
+		e.knowHost(gotCacheKey, host)
 
 		if gotCacheKey == wantCacheKey {
-			result = endpoint.Name
+			result = host
 		}
 	}
 
-	if result != "" {
+	if result != NilHost {
 		return result, nil
 	}
 	log.Printf("%s: not found in %s", ip, network.Name)
@@ -271,16 +272,16 @@ func knownHostsKey(ip net.IP) (string, error) {
 	return string(bytes), nil
 }
 
-func (e *Exporter) knowHost(key, value string) {
-	cachedValue, found := e.knownHosts[key]
-	if found && cachedValue == value {
+func (e *Exporter) knowHost(key string, host Host) {
+	cachedHost, found := e.knownHosts[key]
+	if found && cachedHost == host {
 		return
 	}
 
 	if e.knownHosts == nil {
-		e.knownHosts = make(map[string]string)
+		e.knownHosts = make(map[string]Host)
 	}
 
-	e.knownHosts[key] = value
-	log.Printf("%s => %q", net.IP(key), value)
+	e.knownHosts[key] = host
+	log.Println(net.IP(key), "=>", host)
 }
