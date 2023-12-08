@@ -1,7 +1,6 @@
 package exporter
 
 import (
-	"fmt"
 	"log"
 	"net"
 
@@ -26,6 +25,7 @@ type Exporter struct {
 	PacketSource    *PacketSource
 
 	knownHosts map[string]Host
+	byteCounts map[HostPair]int
 }
 
 func (e *Exporter) Run(ctx Context) error {
@@ -122,6 +122,7 @@ func (e *Exporter) dockerClient(ctx Context) (*DockerClient, error) {
 }
 
 func (e *Exporter) handlePackets(ctx Context, ps *PacketSource) error {
+	e.Reset()
 	for {
 		err := ctx.Err()
 		if err != nil {
@@ -138,6 +139,10 @@ func (e *Exporter) handlePackets(ctx Context, ps *PacketSource) error {
 			return err
 		}
 	}
+}
+
+func (e *Exporter) Reset() {
+	e.byteCounts = make(map[HostPair]int)
 }
 
 func (e *Exporter) Handle(ctx Context, packet Packet) error {
@@ -170,9 +175,8 @@ func (e *Exporter) Handle(ctx Context, packet Packet) error {
 		return err
 	}
 
-	fmt.Printf("%s:%d => %s:%d\n", src, tcp.SrcPort, dst, tcp.DstPort)
-
-	return nil // fmt.Errorf("not implemented")
+	e.byteCounts[PairHosts(src, dst)] += len(packet.Data())
+	return nil
 }
 
 func (e *Exporter) Categorize(ctx Context, ip net.IP,
