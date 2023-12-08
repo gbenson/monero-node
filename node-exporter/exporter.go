@@ -1,6 +1,7 @@
 package exporter
 
 import (
+	"context"
 	"log"
 	"net"
 
@@ -123,8 +124,15 @@ func (e *Exporter) dockerClient(ctx Context) (*DockerClient, error) {
 
 func (e *Exporter) handlePackets(ctx Context, ps *PacketSource) error {
 	e.Reset()
+
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+	go func() {
+		cancel(e.exportMetrics(ctx))
+	}()
+
 	for {
-		err := ctx.Err()
+		err := context.Cause(ctx)
 		if err != nil {
 			return err
 		}
@@ -177,6 +185,15 @@ func (e *Exporter) Handle(ctx Context, packet Packet) error {
 
 	e.byteCounts[PairHosts(src, dst)] += len(packet.Data())
 	return nil
+}
+
+func (e *Exporter) exportMetrics(ctx Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
 
 func (e *Exporter) Categorize(ctx Context, ip net.IP,
