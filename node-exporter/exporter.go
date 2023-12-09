@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"net"
+	"sync"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -14,8 +16,9 @@ import (
 )
 
 const (
-	DefaultNetworkID = "monero-node_default"
-	StratumPort      = 3333
+	DefaultExportFreq = time.Minute
+	DefaultNetworkID  = "monero-node_default"
+	StratumPort       = 3333
 )
 
 type Exporter struct {
@@ -24,9 +27,13 @@ type Exporter struct {
 	DockerNetwork   *DockerNetwork
 	NetworkDevice   string
 	PacketSource    *PacketSource
+	ExportFrequency time.Duration
 
 	knownHosts map[string]Host
+
+	mu         sync.Mutex
 	byteCounts map[HostPair]int
+	lastReset  time.Time
 }
 
 func (e *Exporter) Run(ctx Context) error {
@@ -149,8 +156,15 @@ func (e *Exporter) handlePackets(ctx Context, ps *PacketSource) error {
 	}
 }
 
-func (e *Exporter) Reset() {
+func (e *Exporter) Reset() map[HostPair]int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	counts := e.byteCounts
 	e.byteCounts = make(map[HostPair]int)
+	e.lastReset = time.Now()
+
+	return counts
 }
 
 func (e *Exporter) Handle(ctx Context, packet Packet) error {
@@ -185,15 +199,6 @@ func (e *Exporter) Handle(ctx Context, packet Packet) error {
 
 	e.byteCounts[PairHosts(src, dst)] += len(packet.Data())
 	return nil
-}
-
-func (e *Exporter) exportMetrics(ctx Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		}
-	}
 }
 
 func (e *Exporter) Categorize(ctx Context, ip net.IP,
@@ -305,4 +310,54 @@ func (e *Exporter) knowHost(key string, host Host) {
 
 	e.knownHosts[key] = host
 	log.Println(net.IP(key), "=>", host)
+}
+
+func (e *Exporter) exportMetrics(ctx Context) error {
+	timer := time.NewTimer(e.nextUploadWait())
+	for {
+		select {
+		case <-ctx.Done():
+			return context.Cause(ctx)
+
+		case <-timer.C:
+			start := e.lastReset
+			counts := e.Reset()
+			limit := e.lastReset
+
+			err := e.uploadMetrics(ctx, limit, counts, limit.Sub(start))
+			if err != nil {
+				log.Println("warning:", err)
+			}
+
+			timer.Reset(e.nextUploadWait())
+		}
+	}
+}
+
+func (e *Exporter) nextUploadWait() time.Duration {
+	wait := time.Until(e.nextUploadTime())
+	const minWait = time.Nanosecond
+	if wait < minWait {
+		return minWait
+	}
+	return wait
+}
+
+func (e *Exporter) nextUploadTime() time.Time {
+	maxWait := e.ExportFrequency
+	if maxWait <= time.Duration(0) {
+		maxWait = DefaultExportFreq
+	}
+
+	return e.lastReset.Add(maxWait)
+}
+
+func (e *Exporter) uploadMetrics(ctx Context,
+	t time.Time,
+	byteCounts map[HostPair]int,
+	d time.Duration) error {
+
+	log.Println(t, d)
+
+	return nil
 }
