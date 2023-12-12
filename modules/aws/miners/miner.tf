@@ -13,6 +13,7 @@ variable "miner_architectures" {
       excluded_instance_types = [
 	"i3.large",
 	"m7a.medium",
+	"r7a.medium",
       ]
     }
   }
