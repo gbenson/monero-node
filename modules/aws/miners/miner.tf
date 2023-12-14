@@ -7,6 +7,7 @@ variable "miner_architectures" {
       excluded_instance_types = [
 	"m6g.medium",
 	"m6gd.medium",
+	"r6g.medium",
       ]
     },
     x86_64 = {
