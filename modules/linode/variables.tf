@@ -11,6 +11,7 @@ variable "admin_ssh_key" {
 variable "miner_count" {
   type        = number
   description = "Number of miner instances to provision"
+  default     = 0
 }
 
 variable "tor_miner_config_passphrase" {

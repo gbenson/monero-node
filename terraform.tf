@@ -23,7 +23,5 @@ module "linode" {
   admin_ip_prefix = var.admin_ip_prefix
   admin_ssh_key   = var.admin_ssh_key
 
-  miner_count = 1
-
   tor_miner_config_passphrase = var.tor_miner_config_passphrase
 }
