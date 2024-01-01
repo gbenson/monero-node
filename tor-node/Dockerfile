@@ -3,6 +3,7 @@ RUN set -eux \
   \
   && apt-get -y update \
   && apt-get -y upgrade \
+  && apt-mark hold logrotate \
   && apt-get -y install tor \
   && apt-get -y clean \
   && rm -rf /var/lib/apt /var/cache/apt/archives \
