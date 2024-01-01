@@ -9,6 +9,7 @@
         uid: 802
 
       p2pool-tor:
+        uid: 803
         volume:
           name: p2pool-tor-service
           mode: "02700"
@@ -159,14 +160,15 @@
       ansible.builtin.copy:
         dest: "{{ (dirname, filename) | path_join }}"
         content: "{{ p2pool_tor_service[filename] }}"
-        owner: 101
-        group: 103
+        owner: "{{ service.uid }}"
+        group: "{{ service.gid | default(service.uid) }}"
         mode: "0600"
       loop: "{{ p2pool_tor_service | list }}"
       loop_control:
         loop_var: filename
       vars:
         dirname: /var/lib/docker/volumes/p2pool-tor-service/_data/hidden_service
+        service: "{{ services['p2pool-tor'] }}"
       become: yes
       tags:
         - services

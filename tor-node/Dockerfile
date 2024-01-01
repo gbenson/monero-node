@@ -11,8 +11,15 @@ RUN set -eux \
 
 FROM base as builder
 COPY entrypoint.sh /
+
+ARG m_USER=debian-tor
+ARG m_UID=803
+ARG m_GID=$m_UID
+
 RUN set -eux \
   \
+  && groupmod --gid $m_GID $m_USER \
+  && usermod --uid $m_UID $m_USER \
   && grep '^ExecStartPre' /lib/systemd/system/tor@default.service \
     | sed 's/^[^=]*=//' >> /entrypoint.sh \
   && grep '^ExecStart=' /lib/systemd/system/tor@default.service \
