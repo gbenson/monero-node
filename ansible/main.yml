@@ -64,6 +64,18 @@
       tags:
         - network
 
+    - name: IPv6 is not enabled
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/disable-ipv6.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          net.ipv6.conf.all.disable_ipv6=1
+      become: yes
+      tags:
+        - network
+
     - name: Required packages are installed
       ansible.builtin.apt:
         pkg:
