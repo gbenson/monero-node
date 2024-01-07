@@ -1,0 +1,63 @@
+---
+- name: SSH from internal network is allowed
+  community.general.ufw:
+    rule: allow
+    from: "{{ internal_network }}"
+    proto: tcp
+    port: 22
+  become: yes
+
+- name: Docker firewall rules are configured
+  ansible.builtin.blockinfile:
+    path: /etc/ufw/after.rules
+    block: |
+      *filter
+      :DOCKER-USER - [0:0]
+      :ufw-docker-logging-reject - [0:0]
+
+      -A ufw-docker-logging-reject {{ ufw_docker_log_blocked }}
+      -A ufw-docker-logging-reject -j REJECT
+
+      # Allow all container-container traffic
+      -A DOCKER-USER -s {{ docker_network }} -j RETURN
+
+      # Allow DNS replies
+      -A DOCKER-USER -p udp --sport 53 -s {{ dns_server }} -j RETURN
+
+      # Block all other UDP
+      -A DOCKER-USER -p udp -j ufw-docker-logging-reject
+
+      # Allow p2pool stratum from internal network only
+      -A DOCKER-USER -p tcp --dport 3333 -s {{ internal_network }} -j RETURN
+      -A DOCKER-USER -p tcp --dport 3333 -j ufw-docker-logging-reject
+
+      # Allow monerod RPC from internal network only
+      -A DOCKER-USER -p tcp --dport 18081 -s {{ internal_network }} -j RETURN
+      -A DOCKER-USER -p tcp --dport 18081 -j ufw-docker-logging-reject
+
+      # Block internal network from everything else
+      -A DOCKER-USER -s {{ internal_networks }} -j ufw-docker-logging-reject
+
+      # Allow external network to access monerod and p2pool-mini p2p
+      -A DOCKER-USER -p tcp --dport 18080 -j RETURN
+      -A DOCKER-USER -p tcp --dport 37888 -j RETURN
+
+      # Block all other incoming TCP connections
+      -A DOCKER-USER -p tcp --syn -j ufw-docker-logging-reject
+      -A DOCKER-USER -p tcp -j RETURN
+
+      # Allow everything else
+      -A DOCKER-USER -j RETURN
+      COMMIT
+  vars:
+    ufw_docker_log_blocked: >-
+      -m limit --limit 3/min --limit-burst 10
+      -j LOG --log-prefix "[UFW DOCKER BLOCK] "
+  become: yes
+
+- name: Firewall is enabled
+  community.general.ufw:
+    state: enabled
+    default: reject
+    logging: low
+  become: yes

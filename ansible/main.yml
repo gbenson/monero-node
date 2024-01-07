@@ -15,6 +15,7 @@
           mode: "02700"
 
   vars_files:
+    - vars/firewall.yml
     - vars/p2pool-tor-service.yml
 
   tasks:
@@ -84,6 +85,7 @@
           - git
           - openssh-server
           - tmux
+          - ufw
           - unattended-upgrades
       become: yes
       tags:
@@ -143,6 +145,16 @@
       become: yes
       tags:
         - docker
+
+    - name: Firewall is configured and enabled
+      ansible.builtin.include_tasks:
+        file: tasks/firewall.yml
+        apply:
+          tags:
+            - always
+      tags:
+        - network
+        - firewall
 
     - name: git is configured
       ansible.builtin.copy:
