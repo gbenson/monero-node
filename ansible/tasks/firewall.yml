@@ -7,6 +7,13 @@
     port: 22
   become: yes
 
+- name: IGMP from router is allowed
+  community.general.ufw:
+    rule: allow
+    from: "{{ external_router }}"
+    proto: igmp
+  become: yes
+
 - name: Docker firewall rules are configured
   ansible.builtin.blockinfile:
     path: /etc/ufw/after.rules
