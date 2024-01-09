@@ -28,8 +28,10 @@
       # Allow all container-container traffic
       -A DOCKER-USER -s {{ docker_network }} -j RETURN
 
-      # Allow DNS replies
+      # Allow DNS replies and DHCP
       -A DOCKER-USER -p udp --sport 53 -s {{ dns_server }} -j RETURN
+      -A DOCKER-USER -p udp --sport 67 --dport 68 -j RETURN
+      -A DOCKER-USER -p udp --sport 68 --dport 67 -j RETURN
 
       # Block all other UDP
       -A DOCKER-USER -p udp -j ufw-docker-logging-reject
