@@ -28,6 +28,12 @@
       # Allow all container-container traffic
       -A DOCKER-USER -s {{ docker_network }} -j RETURN
 
+      # Allow some ICMP
+      -A DOCKER-USER -p icmp --icmp-type destination-unreachable -j RETURN
+      -A DOCKER-USER -p icmp --icmp-type time-exceeded -j RETURN
+      -A DOCKER-USER -p icmp --icmp-type parameter-problem -j RETURN
+      -A DOCKER-USER -p icmp --icmp-type echo-request -j RETURN
+
       # Allow DNS replies and DHCP
       -A DOCKER-USER -p udp --sport 53 -s {{ dns_server }} -j RETURN
       -A DOCKER-USER -p tcp --sport 53 -s {{ dns_server }} -j RETURN
