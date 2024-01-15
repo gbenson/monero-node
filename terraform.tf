@@ -16,12 +16,3 @@ module "aws_us_east_2" {
   admin_ip_prefix = var.admin_ip_prefix
   admin_ssh_key   = var.admin_ssh_key
 }
-
-module "linode" {
-  source = "./modules/linode"
-
-  admin_ip_prefix = var.admin_ip_prefix
-  admin_ssh_key   = var.admin_ssh_key
-
-  tor_miner_config_passphrase = var.tor_miner_config_passphrase
-}
