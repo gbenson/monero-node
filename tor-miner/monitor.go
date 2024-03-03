@@ -26,7 +26,6 @@ func monitor(cmds []*exec.Cmd,
 		localAPI: localAPI,
 		onionAPI: onionAPI,
 		receiver: receiver,
-		hostInfo: GetInstanceMetadata(),
 	}
 
 	time.Sleep(1 * time.Second)
