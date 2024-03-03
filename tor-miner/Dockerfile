@@ -5,10 +5,10 @@ RUN apt-get -y update
 FROM builder-base as xmrig-src
 
 ARG NAME=xmrig
-ARG VERSION=6.21.0
+ARG VERSION=6.21.1
 ARG TARBALL=v$VERSION.tar.gz
 ARG DOWNLOAD=https://github.com/xmrig/xmrig/archive/refs/tags
-ARG HASH=4b197c71fa06030216b641b4ea57f7a3d977a17df1b55bd13759d4705dbf5941
+ARG HASH=c45baea5a210143b647349b5234a2192164d3473a39d2b1cab7fb35b1a2a8ba9
 
 RUN apt-get -y install curl
 WORKDIR /usr/src
