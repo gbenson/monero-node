@@ -71,12 +71,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// configuration file if necessary.
 	out, err := r.dryRun(ctx)
 	if strings.Contains(out, "no valid configuration found") {
-		var poolURL string
-		poolURL, err = config.Resolver.GetPoolURL()
-		if err != nil {
-			fmt.Println("tor-miner:", err)
-			poolURL = config.Pool.URL
-		}
+		poolURL := config.Pool.URL
 		fmt.Println("tor-miner: mining to", poolURL)
 
 		opt := []string{"-o", poolURL}
