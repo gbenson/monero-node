@@ -1,11 +1,7 @@
 package miner
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os/exec"
 	"time"
 )
@@ -39,12 +35,6 @@ func monitor(cmds []*exec.Cmd,
 }
 
 func (m *Monitor) mainLoop() error {
-	r := Report{
-		receiver: m.receiver,
-		HostInfo: m.hostInfo,
-		MinerAPI: m.onionAPI,
-	}
-
 	// Ensure our subprocesses are still running.  Failure of either
 	// is treated as unrecoverable: we try to report the error and
 	// then terminate.  Recovery is our invoker's problem.
@@ -54,46 +44,7 @@ func (m *Monitor) mainLoop() error {
 		}
 
 		err := fmt.Errorf("%v exited", cmd)
-		r.ReportGoError(err)
 		return err
-	}
-
-	// Get the miner's status
-	res, err := m.localAPI.Get("/2/summary")
-	if err != nil {
-		return r.ReportGoError(err)
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return r.ReportHTTPError(res)
-	}
-
-	ctype := res.Header.Get("Content-Type")
-	switch ctype {
-	case "application/json":
-		err = nil
-	case "":
-		err = errors.New("unspecified Content-Type")
-	default:
-		err = fmt.Errorf("%q: unexpected Content-Type", ctype)
-	}
-	if err != nil {
-		return r.ReportGoError(err)
-	}
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return r.ReportGoError(err)
-	}
-
-	if err = json.Unmarshal(body, &r.MinerStatus); err != nil {
-		r.MinerStatus = body
-		return r.ReportGoError(err)
-	}
-
-	if err = r.Send(); err != nil {
-		return r.ReportGoError(err)
 	}
 
 	return nil
