@@ -1,9 +1,10 @@
 FROM debian:12-slim as base
+COPY bookworm-backports.list /etc/apt/sources.list.d
 RUN set -eux \
   \
   && apt-get -y update \
   && apt-get -y upgrade \
-  && apt-get -y install --no-install-recommends tor \
+  && apt-get -y install --no-install-recommends tor/bookworm-backports \
   && apt-get -y clean \
   && rm -rf /var/lib/apt /var/cache/apt/archives \
   && rm -f /var/cache/ldconfig/aux-cache \
