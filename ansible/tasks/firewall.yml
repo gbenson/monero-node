@@ -47,10 +47,6 @@
       -A DOCKER-USER -p tcp --dport 3333 -s {{ internal_network }} -j RETURN
       -A DOCKER-USER -p tcp --dport 3333 -j ufw-docker-logging-reject
 
-      # Allow monerod RPC from internal network only
-      -A DOCKER-USER -p tcp --dport 18081 -s {{ internal_network }} -j RETURN
-      -A DOCKER-USER -p tcp --dport 18081 -j ufw-docker-logging-reject
-
       # Block internal network from everything else
       -A DOCKER-USER -s {{ internal_networks }} -j ufw-docker-logging-reject
 

@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     ports:
       - 0.0.0.0:18080:18080/tcp  # p2p port
-      - 0.0.0.0:18081:18081/tcp  # unrestricted RPC
+      - 127.0.0.1:18081:18081/tcp  # unrestricted RPC
     volumes:
       - monerod:/srv/monerod
       - /dev/null:/srv/monerod/bitmonero.log
