@@ -12,7 +12,7 @@ RUN set -eux \
 FROM base as builder
 
 ARG NAME=monero
-ARG VERSION=v0.18.3.2
+ARG VERSION=v0.18.3.3
 ARG DOWNLOAD=https://downloads.getmonero.org/cli
 
 RUN set -eux; \
@@ -20,11 +20,11 @@ RUN set -eux; \
   case $(uname -m) in \
   x86_64) \
     ARCH=linux-x64 \
-    HASH=9dafd70230a7b3a73101b624f3b5f439cc5b84a19b12c17c24e6aab94b678cbb \
+    HASH=47c7e6b4b88a57205800a2538065a7874174cd087eedc2526bee1ebcce0cc5e3 \
     ;; \
   aarch64) \
     ARCH=linux-armv8 \
-    HASH=72f5c90955a736d99c1a645850984535050ebddd42c39a27eec1df82bd972126 \
+    HASH=eb3f924c085ae5df85f5bf9ee27faaa20acd309835684e27e3fbb98b9666b649 \
     ;; \
   *) exit 1 ;; \
   esac; \
