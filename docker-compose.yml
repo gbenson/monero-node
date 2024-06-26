@@ -29,10 +29,6 @@ services:
     image: gbenson/p2pool
     container_name: p2pool
     restart: unless-stopped
-    depends_on:
-      - monerod
-    links:
-      - monerod
     ports:
       - 0.0.0.0:3333:3333/tcp  # stratum port
       - 0.0.0.0:37888:37888/tcp  # p2pool-mini p2p port
@@ -52,10 +48,6 @@ services:
     image: gbenson/tor-node
     container_name: p2pool-tor
     restart: unless-stopped
-    depends_on:
-      - p2pool
-    links:
-      - p2pool
     volumes:
       - p2pool-tor-service:/var/lib/tor
     command:
