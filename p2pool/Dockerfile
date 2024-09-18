@@ -11,7 +11,7 @@ RUN set -eux \
 FROM base as builder
 
 ARG NAME=p2pool
-ARG VERSION=v4.0
+ARG VERSION=v4.1
 ARG PACKAGE=$NAME-$VERSION
 ARG DOWNLOAD=https://github.com/SChernykh/$NAME/releases/download
 ARG SHA256SUMS=sha256sums.txt.asc
