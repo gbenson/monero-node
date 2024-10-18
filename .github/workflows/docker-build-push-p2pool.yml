@@ -3,7 +3,7 @@ name: Build and push p2pool Docker images
 on:
   push:
     tags:
-      - "p2pool-[0-9]+.[0-9]+-[0-9]+"
+      - "p2pool-[0-9]+.[0-9]+.[0-9]+-[0-9]+"
 
 jobs:
   docker:
@@ -30,8 +30,8 @@ jobs:
         with:
           images: ${{ vars.DOCKERHUB_USERNAME }}/p2pool
           tags: |
-            type=match,pattern=p2pool-(\d+\.\d+-\d+),group=1
-            type=match,pattern=p2pool-(\d+\.\d+),group=1
+            type=match,pattern=p2pool-(\d+(\.\d+)*-\d+),group=1
+            type=match,pattern=p2pool-(\d+(\.\d+)*),group=1
 
       - name: Build and push
         uses: docker/build-push-action@v5
