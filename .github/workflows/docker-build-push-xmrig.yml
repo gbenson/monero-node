@@ -30,14 +30,14 @@ jobs:
         with:
           images: ${{ vars.DOCKERHUB_USERNAME }}/xmrig
           tags: |
-            type=match,pattern=xmrig-(\d+\.\d+.\d+-\d+),group=1
-            type=match,pattern=xmrig-(\d+\.\d+.\d+),group=1
+            type=match,pattern=xmrig-(\d+(\.\d+)*-\d+),group=1
+            type=match,pattern=xmrig-(\d+(\.\d+)*),group=1
 
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: tor-miner
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
