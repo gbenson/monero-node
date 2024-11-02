@@ -3,7 +3,7 @@ name: Build and push p2pool Docker images
 on:
   push:
     tags:
-      - "p2pool-[0-9]+.[0-9]+.[0-9]+-[0-9]+"
+      - "p2pool-[0-9]+.[0-9]+-[0-9]+"
 
 jobs:
   docker:
