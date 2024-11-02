@@ -1,5 +1,3 @@
-version: "3.2"
-
 services:
   monerod:
     image: gbenson/monero-node
@@ -52,6 +50,8 @@ services:
       - p2pool-tor-service:/var/lib/tor
     command:
       - p2pool:3333
+    profiles:
+      - disabled
 
 volumes:
   monerod:
