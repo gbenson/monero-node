@@ -1,15 +1,30 @@
 FROM debian:12-slim AS base
-RUN set -eux \
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN --mount=type=tmpfs,target=/var/cache \
+    --mount=type=tmpfs,target=/var/lib/apt/lists \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux \
   \
   && apt-get -y update \
-  && apt-get -y upgrade \
-  && apt-get -y install curl bzip2 \
-  && apt-get -y clean \
-  && rm -rf /var/lib/apt /var/cache/apt/archives \
-  && rm -f /var/cache/ldconfig/aux-cache \
-  && for i in /run/*; do [ "$i" = "/run/lock" ] || rm -rf "$i"; done
+  && apt-get -y upgrade --no-install-recommends \
+  && rm -f /var/lib/dpkg/*-old
 
-FROM base AS builder
+FROM base AS builder-base
+
+RUN --mount=type=tmpfs,target=/var/cache \
+    --mount=type=tmpfs,target=/var/lib/apt/lists \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux \
+  \
+  && apt-get -y update \
+  && apt-get -y install --no-install-recommends \
+	bzip2 \
+	ca-certificates \
+	curl \
+  && rm -f /var/lib/dpkg/*-old
+
+FROM builder-base AS builder
 
 ARG NAME=monero
 ARG VERSION=v0.18.3.4
