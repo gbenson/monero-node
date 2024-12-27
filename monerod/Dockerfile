@@ -1,4 +1,4 @@
-FROM debian:12-slim as base
+FROM debian:12-slim AS base
 RUN set -eux \
   \
   && apt-get -y update \
@@ -9,7 +9,7 @@ RUN set -eux \
   && rm -f /var/cache/ldconfig/aux-cache \
   && for i in /run/*; do [ "$i" = "/run/lock" ] || rm -rf "$i"; done
 
-FROM base as builder
+FROM base AS builder
 
 ARG NAME=monero
 ARG VERSION=v0.18.3.4

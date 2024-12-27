@@ -1,8 +1,8 @@
-FROM gbenson/tor-node as base
-FROM base as builder-base
+FROM gbenson/tor-node AS base
+FROM base AS builder-base
 RUN apt-get -y update
 
-FROM builder-base as xmrig-src
+FROM builder-base AS xmrig-src
 
 ARG NAME=xmrig
 ARG VERSION=6.22.1
@@ -19,7 +19,7 @@ RUN echo "$HASH  $TARBALL" | sha256sum -c
 RUN tar xvf $TARBALL
 RUN mv $NAME-$VERSION $NAME
 
-FROM base as xmrig-builder
+FROM base AS xmrig-builder
 RUN apt-get -y update
 RUN apt-get -y install build-essential cmake automake libtool autoconf
 RUN apt-get -y install wget
@@ -34,7 +34,7 @@ RUN cmake .. \
 
 RUN make -j$(nproc)
 
-FROM golang:bookworm as tmn-builder
+FROM golang:bookworm AS tmn-builder
 WORKDIR /usr/src/tor-miner
 COPY go.* ./
 RUN go mod download

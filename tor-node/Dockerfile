@@ -1,4 +1,4 @@
-FROM debian:12-slim as base
+FROM debian:12-slim AS base
 COPY bookworm-backports.list /etc/apt/sources.list.d
 RUN set -eux \
   \
@@ -10,7 +10,7 @@ RUN set -eux \
   && rm -f /var/cache/ldconfig/aux-cache \
   && for i in /run/*; do [ "$i" = "/run/lock" ] || rm -rf "$i"; done
 
-FROM base as builder
+FROM base AS builder
 COPY entrypoint.sh /
 
 ARG m_USER=debian-tor
