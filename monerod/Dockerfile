@@ -53,8 +53,6 @@ VOLUME /srv/monerod
 
 USER $m_USER:$m_USER
 
-HEALTHCHECK --interval=30s --timeout=5s CMD curl --fail http://localhost:18081/get_info || exit 1
-
 ENTRYPOINT ["monerod"]
 CMD ["--non-interactive", \
      "--data-dir=/srv/monerod", \
