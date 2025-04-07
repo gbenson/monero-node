@@ -27,7 +27,7 @@ RUN --mount=type=tmpfs,target=/var/cache \
 FROM builder-base AS builder
 
 ARG NAME=monero
-ARG VERSION=v0.18.3.4
+ARG VERSION=v0.18.4.0
 ARG DOWNLOAD=https://downloads.getmonero.org/cli
 
 RUN set -eux; \
@@ -35,11 +35,11 @@ RUN set -eux; \
   case $(uname -m) in \
   x86_64) \
     ARCH=linux-x64 \
-    HASH=51ba03928d189c1c11b5379cab17dd9ae8d2230056dc05c872d0f8dba4a87f1d \
+    HASH=16cb74c899922887827845a41d37c7f3121462792a540843f2fcabcc1603993f \
     ;; \
   aarch64) \
     ARCH=linux-armv8 \
-    HASH=33ca2f0055529d225b61314c56370e35606b40edad61c91c859f873ed67a1ea7 \
+    HASH=f252b6a24e801535bf36fbaaa7b2d6ae44b1efc5d427803d483e3c3a17d6f2cd \
     ;; \
   *) exit 1 ;; \
   esac; \
