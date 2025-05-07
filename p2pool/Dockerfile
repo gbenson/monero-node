@@ -11,7 +11,7 @@ RUN set -eux \
 FROM base AS builder
 
 ARG NAME=p2pool
-ARG VERSION=v4.4
+ARG VERSION=v4.5
 ARG PACKAGE=$NAME-$VERSION
 ARG DOWNLOAD=https://github.com/SChernykh/$NAME/releases/download
 ARG SHA256SUMS=sha256sums.txt.asc
@@ -26,7 +26,7 @@ RUN set -eux; \
   \
   ARCH=linux-$(uname -m | sed s/86_//); \
   TARBALL=$PACKAGE-$ARCH.tar.gz; \
-  HASH=$(grep -A2 $TARBALL $SHA256SUMS | tail -1 | sed 's/.*\([0-9A-F]\{64\}\).*/\1/'); \
+  HASH=$(grep -A2 $TARBALL $SHA256SUMS | tail -1 | sed 's/.*\([0-9a-fA-F]\{64\}\).*/\1/'); \
   echo "$HASH  $TARBALL" > SHA256SUMS \
   && curl -Lo $TARBALL $DOWNLOAD/$VERSION/$TARBALL \
   && sha256sum -c SHA256SUMS \
