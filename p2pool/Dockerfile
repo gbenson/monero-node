@@ -1,12 +1,14 @@
 FROM debian:12-slim AS base
-RUN set -eux \
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN --mount=type=tmpfs,target=/var/cache \
+    --mount=type=tmpfs,target=/var/lib/apt/lists \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux \
   \
   && apt-get -y update \
-  && apt-get -y upgrade \
-  && apt-get -y clean \
-  && rm -rf /var/lib/apt /var/cache/apt/archives \
-  && rm -f /var/cache/ldconfig/aux-cache \
-  && for i in /run/*; do [ "$i" = "/run/lock" ] || rm -rf "$i"; done
+  && apt-get -y upgrade --no-install-recommends \
+  && rm -f /var/lib/dpkg/*-old
 
 FROM base AS builder
 
@@ -36,20 +38,15 @@ RUN set -eux; \
 FROM base
 COPY --from=builder /build/p2pool /usr/bin
 
-ARG m_USER=p2pool
-ARG m_UID=802
-ARG m_GID=$m_UID
-
 RUN set -eux \
   \
-  && addgroup --system --gid $m_GID $m_USER \
-  && adduser --system --uid $m_UID --gid $m_GID --disabled-password $m_USER \
-  && mkdir -m 0700 /srv/p2pool \
-  && chown $m_UID:$m_GID /srv/p2pool
+  && addgroup --system --gid 802 p2pool \
+  && adduser --system --uid 802 --gid 802 --disabled-password p2pool \
+  && install -d -op2pool -gp2pool -m700 /srv/p2pool
 
 VOLUME /srv/p2pool
 
-USER $m_USER:$m_USER
+USER p2pool:p2pool
 WORKDIR /srv/p2pool
 
 ENTRYPOINT ["p2pool"]

@@ -3,7 +3,7 @@ name: Build and push p2pool Docker images
 on:
   push:
     tags:
-      - "p2pool-[0-9]+.[0-9]+-[0-9]+"
+      - "p2pool-*-[0-9]+"
 
 jobs:
   docker:
@@ -33,6 +33,11 @@ jobs:
             type=match,pattern=p2pool-(\d+(\.\d+)*-\d+),group=1
             type=match,pattern=p2pool-(\d+(\.\d+)*),group=1
 
+      - name: Get version
+        uses: olegtarasov/get-tag@v2.1.4
+        with:
+          tagRegex: p2pool-(.*)-\d+
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -45,3 +50,4 @@ jobs:
             GITHUB_SERVER_URL=${{ github.server_url }}
             GITHUB_REPOSITORY=${{ github.repository }}
             GITHUB_SHA=${{ github.sha }}
+            VERSION=v${{ env.GIT_TAG_NAME }}
