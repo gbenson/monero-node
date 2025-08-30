@@ -34,6 +34,11 @@ jobs:
             type=match,pattern=monerod-(\d+\.\d+\.\d+.\d+),group=1
             type=match,pattern=monerod-(\d+\.\d+),group=1
 
+      - name: Get version
+        uses: olegtarasov/get-tag@v2.1.4
+        with:
+          tagRegex: monerod-(.*)-\d+
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -46,3 +51,4 @@ jobs:
             GITHUB_SERVER_URL=${{ github.server_url }}
             GITHUB_REPOSITORY=${{ github.repository }}
             GITHUB_SHA=${{ github.sha }}
+            VERSION=v${{ env.GIT_TAG_NAME }}
